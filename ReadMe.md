@@ -1,6 +1,9 @@
 **Student Analyst**: Ezra Weible
+
 **Class Name**: BIOS 6624 - Advanced Statistical Methods and Analysis
+
 **Instructors**: Camille Moore, Tasha Fingerlin, Elizabeth Wynn, Carter Sevick
+
 **GitHub Location**: https://github.com/eweible/BIOS6624.git
 
 Details about the folders (see internal folder ReadMe for additional information):
