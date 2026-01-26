@@ -6,5 +6,48 @@ date: "2026-01-26"
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(naniar)
+raw_dat <- read.csv(here::here("P0/DataRaw", "Project0_Clean_v2.csv"))
 ```
+
+Initial overview:
+```{r}
+View(raw_dat)
+summary(raw_dat)
+glimpse(raw_dat)
+```
+There does appear to be some missing data, either coded as an empty string or as NA. Collection.Date, Collection.Sample, times, and measurements appear to be in the correct format. Unsure about the MEMs, would have to explore further. Perhaps ask clarifying question about how they were determined - by hand for MEMs Sample interval but automatically for the decimal time version? 
+
+Missing data:
+```{r}
+naniar::gg_miss_var(raw_dat)
+naniar::vis_miss(raw_dat)
+```
+
+Appears as though the majority of the missingness is from MEMs Sample interval decimal time (over 175 missing). Is there a reason for this??
+I wonder if some of it is due to the booklet sample interval decimal time, but there are only a few over 50 missing there, so that cannot be the only reason.
+
+Why are there some missing responses for cortisol and DHEA? Appears as though they are for the same patients, did they miss a visit or collection time? 
+
+Verifying correct values:
+```{r}
+table(raw_dat$Collection.Sample)
+table(raw_dat$DAYNUMB)
+
+hist(raw_dat$MEMs..Sample.interval.Decimal.Time..mins.)
+
+hist(raw_dat$Cortisol..nmol.L.)
+hist(raw_dat$DHEA..nmol.L.)
+hist(raw_dat$Cortisol..ug.dl.)
+hist(raw_dat$DHEA..pg.dl.)
+```
+What is a reasonable MEMs sample interval decimal time (mins)? There appears to be a wide variety (~20-920)
+What is a reasonable level for cortisol and DHEA for each unit? There appears to be more variety for DHEA than cortisol, is this expected?
+
+
+
+
+
+
 
