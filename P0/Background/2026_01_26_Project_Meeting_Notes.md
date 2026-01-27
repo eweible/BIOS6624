@@ -43,13 +43,7 @@ Expected range for cortisol and DHEA?
 	- DHEA: nmol/L, there is an upper limit on our assay (5.205/whatever max is in the dataset). Very high value (corresponds to 15000 pg/dl) and those are likely errors (but if an individual person who was recording a level that high repeatedly, then maybe be concerned they might have a different disease process and may want to exclude them from the dataset as they would not be representative and wouldn't be able to see the temporal change with the assay limit)
 	- Assayed once (not in replicate)
 
-
-
-
-
 BY EOD Wednesday have a plan for each RQ
-
-
 
 Group Analysis Plan Brainstorming:
 RQ1:
@@ -74,16 +68,36 @@ Questions as a class again
 			§ Also use whichever you think is best if they don't agree
 	- RQ2 is OK as descriptive
 
-
-
-
-
-
-
-
-
-
-
-
-
 Wed: lecture on baysian, wrap up worksheet 1, spend more time doing P0 questions. Based on what we talked about today, there is data management to do that you might want to get going on & look at descriptive statistics/boxplots/statistics of outcome. A week from Wednesday, report is due. Want to have some stuff done with data done so that on Wednesday you can focus on nailing down the rest of the analysis plan and it is just implementing
+
+
+Points from questions for the investigator on 1/26:
+
+- General questions and comments:
+  - The investigator stated that the sample.interval variables are the times between first booklet (and first cap) recorded time and subsequent recorded samples. The investigator said she was not sure these were calculated correctly and that she was not interested in using these values in analysis.
+  - Rather, she said she is interested in measuring booklet and cap time since waking, where wake time is determined from the sleep diary.
+  - Missing data:
+    - DHEA and cortisol measurements may be missing even if a booklet or cap time is recorded due to lab errors or insufficient sample collection/poor sample quality.
+    - Cap times can be missing even if a booklet time is recorded. This could be due to cap malfunction (low battery) or due to user error (they forgot to put the booklet back in the bottle before taking the next sample).
+    - The investigator is interested in knowing about the rates of missing data in your report.
+- For question 1, what is meant by agreement?
+  - The investigator said she imagined a scatter plot showing the correlation between time since waking measured using the booklet vs. the cap and wanted to know if the two measures were significantly associated. She said she was interested to know if there was any bias/if the booklet times tended to be recorded earlier or later or at about the same as the cap times.
+- For question 2, what is meant by adherence?
+  - The investigator stated that she wanted to consider adherence in two ways.
+    - The percentage of samples taken within 7.5 minutes of the scheduled time.
+    - The percentage of samples within 15 minutes of the scheduled time.
+- For question 3:
+  - Which DHEA and cortisol measurements should be used?
+    - The nmol/L measures.
+  - What is the expected range of cortisol and DHEA?
+    - Cortisol: values over 26 are high, but biologically possible. Values over 80 are likely lab errors and should be excluded.
+    - DHEA: there is an upper detection limit to the assay (5.205). This corresponds to an extremely high DHEA level and since the level is not observed, it could make it difficult to see the diurnal patterns of DHEA change over the course of the day.  These observations should be excluded.  The investigator also said that if any participants had several DHEA measures at the detection limit, they could have underlying health problems and that she would want to exclude that person from Q3 analysis. She asked that you let her know if you found any participants like this.
+- What are the patterns of change over the course of the day? What is the investigator interested in knowing about changes over time?
+    - The investigator stated that levels of cortisol and DHEA are expected to increase sharply from waking to 30 minutes after waking and then decline more slowly over the rest of the day.
+    - She was interested in knowing if the SPIT test shows this expected pattern.
+    - She wanted to know: 1) is there an increase in cortisol and/or DHEA from waking to 30 minutes post waking? And 2) what is the rate of decline in cortisol and DHEA after 30 minutes from waking?
+    - She also stated that even if there are not statistically significant differences, she would like to know the estimates for the initial increase and rates of decline so she can compare them to what is known from other more standard hormone tests.
+- Which time measurement should be used for this analysis (Cap or Booklet)?
+  - The investigator said she thought the two time measures should agree and therefore either would be fine. She asked us to choose whichever we thought would be best for statistical reasons.
+  
+  
