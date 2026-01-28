@@ -96,4 +96,38 @@ cat("Number of participants removed:", nrow(removed_info), "\n")
 cat("Removed participant ID(s):", removed_info$SubjectID, "\n")
 cat("Number of DHEA values at detection limit:", removed_info$dhea_upper_hits)
 ```
+Adjusting time variables:
+```{r}
+analysis_dat <- analysis_dat %>%
+  mutate(
+    Booket..Clock.Time = na_if(trimws(Booket..Clock.Time), ""),
+    MEMs..Clock.Time = na_if(trimws(MEMs..Clock.Time), ""),
+    Sleep.Diary.reported.wake.time = na_if(trimws(Sleep.Diary.reported.wake.time), "")
+  ) %>% # Convert empty strings to NAs and trim leading spaces
+  mutate(
+    booklet_time = as.POSIXct(
+      paste(Collection.Date, Booket..Clock.Time),
+      format = "%m/%d/%Y %H:%M"
+        # MM/DD/YYYY format
+    ),
+    cap_time = as.POSIXct(
+      paste(Collection.Date, MEMs..Clock.Time),
+      format = "%m/%d/%Y %H:%M"
+        # MM/DD/YYYY format
+    ),
+    reported_wake_time = as.POSIXct(
+      paste(Collection.Date, Sleep.Diary.reported.wake.time),
+      format = "%m/%d/%Y %H:%M"
+        # MM/DD/YYYY format
+    )
+  ) %>% # Combine date + time into full timestamps
+  mutate(
+    wake_diff_booklet = as.numeric(booklet_time - reported_wake_time, units = "mins"),
+      # Difference between booklet time and wake time
+    wake_diff_cap = as.numeric(cap_time - reported_wake_time, units = "mins"),
+      # Difference between cap time and wake time
+    diff_booklet_cap = as.numeric(booklet_time - cap_time, units = "mins")
+      # Difference between booklet time and cap time
+  ) # Create new variables as times in mins
+```
 
