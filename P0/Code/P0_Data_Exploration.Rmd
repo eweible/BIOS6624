@@ -58,3 +58,42 @@ TODO:
 - Flag levels of cortisol that are over 80, max DHEA value. Exclude individuals with multiple DHEA that are near detection limit
 - Plot cortisol and DHEA levels with bar at 30 min
 
+Data Manipulation:
+```{r}
+analysis_dat <- raw_dat %>%
+  select(
+    -Booklet..Sample.interval,
+    -Booklet..Sample.interval.Decimal.Time..mins.,
+    -MEMs..Sample.interval,
+    -MEMs..Sample.interval.Decimal.Time..mins.,
+    -Cortisol..ug.dl.,
+    -DHEA..pg.dl.
+  ) %>% # Remove unwanted columns
+  
+  group_by(SubjectID) %>%
+  mutate(
+    dhea_upper_hits = sum(DHEA..nmol.L. == 5.205, na.rm = TRUE)
+  ) %>%
+  ungroup() %>% # Identify number of DHEA values at the detection limit (5.205)
+  { 
+    removed_info <<- distinct(.[.$dhea_upper_hits > 2, c("SubjectID", "dhea_upper_hits")])
+    . # Return to data
+  } %>% # Save IDs & number of hits of participants to be removed
+  filter(!SubjectID %in% participants_to_remove) %>%
+    # Remove participants with >2 detection limit hits across all their rows
+  
+  mutate(
+    Cortisol..nmol.L. = ifelse(Cortisol..nmol.L. > 80, NA, Cortisol..nmol.L.),
+      # Remove cortisol > 80 nmol/L
+    DHEA..nmol.L. = ifelse(DHEA..nmol.L. == 5.205, NA, DHEA..nmol.L.)
+      # Remove DHEA at the detection limit
+  ) %>% 
+  select(-dhea_upper_hits)
+    # Drop helper column
+  
+# Print about removal to share with investigator
+cat("Number of participants removed:", nrow(removed_info), "\n")
+cat("Removed participant ID(s):", removed_info$SubjectID, "\n")
+cat("Number of DHEA values at detection limit:", removed_info$dhea_upper_hits)
+```
+
