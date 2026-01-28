@@ -8,6 +8,7 @@ date: "2026-01-26"
 knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
 library(naniar)
+library(ggplot2)
 raw_dat <- read.csv(here::here("P0/DataRaw", "Project0_Clean_v2.csv"))
 ```
 
@@ -129,5 +130,83 @@ analysis_dat <- analysis_dat %>%
     diff_booklet_cap = as.numeric(booklet_time - cap_time, units = "mins")
       # Difference between booklet time and cap time
   ) # Create new variables as times in mins
+```
+
+## Initial look into RQ1:
+
+Testing out different plots to see what looks the best
+```{r}
+plot(x = analysis_dat$wake_diff_cap, y = analysis_dat$wake_diff_booklet)
+  # Difference from wake to measurement (booklet and sleep diary are the same for sample 1)
+plot(x = analysis_dat$cap_time, y = analysis_dat$booklet_time)
+  # Requested plot of times against each other 
+plot(analysis_dat$diff_booklet_cap)
+  # Plot showing deviance from 0 by index
+plot(x = analysis_dat$Collection.Sample, y = analysis_dat$diff_booklet_cap)
+  # Plot showing deviance from 0 organized by sample
+```
+
+## Initial look into RQ2:
+
+```{r}
+analysis_dat %>%
+  summarise(
+    n = sum(!is.na(diff_booklet_cap)),
+    n_missing = sum(is.na(diff_booklet_cap)),
+    perc_within_7.5  = mean(abs(diff_booklet_cap) <= 7.5, na.rm = TRUE) * 100,
+    perc_within_15   = mean(abs(diff_booklet_cap) <= 15,  na.rm = TRUE) * 100
+  ) #Summarize adherence overall 
+
+analysis_dat %>%
+  filter(Collection.Sample %in% c(2, 4)) %>%
+  group_by(Collection.Sample) %>%
+  summarise(
+    n = sum(!is.na(diff_booklet_cap)),
+    n_missing = sum(is.na(diff_booklet_cap)),
+    perc_within_7.5  = mean(abs(diff_booklet_cap) <= 7.5, na.rm = TRUE) * 100,
+    perc_within_15   = mean(abs(diff_booklet_cap) <= 15,  na.rm = TRUE) * 100
+  ) # Summarize adherence only for 30min and 10hr samples
+```
+
+## Initial look into RQ3:
+
+```{r}
+cortisol <- analysis_dat %>%
+  group_by(SubjectID, Collection.Sample) %>%
+  summarise(
+    mean_cortisol = mean(Cortisol..nmol.L., na.rm = TRUE),
+    n_samples = sum(!is.na(Cortisol..nmol.L.)),
+    .groups = "drop"
+  ) # Mean cortisol levels for each collection sample by participant 
+DHEA <- analysis_dat %>%
+  group_by(SubjectID, Collection.Sample) %>%
+  summarise(
+    mean_DHEA = mean(DHEA..nmol.L., na.rm = TRUE),
+    n_samples = sum(!is.na(DHEA..nmol.L.)),
+    .groups = "drop"
+  ) # Mean DHEA levels for each collection sample by participant 
+
+ggplot(cortisol, aes(x = Collection.Sample, y = mean_cortisol, group = SubjectID)) +
+  geom_line(alpha = 0.4) +
+  geom_point() +
+  labs(
+    title = "Mean Cortisol by Sample for Each Participant",
+    x = "Collection Sample",
+    y = "Mean Cortisol"
+  ) +
+  theme_minimal()
+    # Initial plot of mean cortisol showing all participants
+
+ggplot(DHEA, aes(x = Collection.Sample, y = mean_DHEA, group = SubjectID)) +
+  geom_line(alpha = 0.4) +
+  geom_point() +
+  labs(
+    title = "Mean Cortisol by Sample for Each Participant",
+    x = "Collection Sample",
+    y = "Mean Cortisol"
+  ) +
+  theme_minimal()
+    # Initial plot of mean DHEA showing all participants
+
 ```
 
