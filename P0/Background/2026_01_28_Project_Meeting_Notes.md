@@ -1,3 +1,4 @@
+Group notes:
 	- RQ1: mixed effects model
 		○ Random intercept for subjects and nested random intercept for days to account for repeated measurements by subject and repeated measurements within each day. Google says format is (1 | subject / day) in lme4/lmer
 		○ Pearsons correlation bad because repeated measures
