@@ -1,0 +1,104 @@
+---
+title: "P0_Draft_Analysis"
+output: html_document
+date: "2026-01-29"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(lme4)
+raw_dat <- read.csv(here::here("P0/DataRaw", "Project0_Clean_v2.csv"))
+```
+
+# Data Manipulation
+
+```{r}
+analysis_dat <- raw_dat %>%
+  select(
+    -Booklet..Sample.interval,
+    -Booklet..Sample.interval.Decimal.Time..mins.,
+    -MEMs..Sample.interval,
+    -MEMs..Sample.interval.Decimal.Time..mins.,
+    -Cortisol..ug.dl.,
+    -DHEA..pg.dl.
+  ) %>% # Remove unwanted columns
+  
+  group_by(SubjectID) %>%
+  mutate(
+    dhea_upper_hits = sum(DHEA..nmol.L. == 5.205, na.rm = TRUE)
+  ) %>%
+  ungroup() %>% # Identify number of DHEA values at the detection limit (5.205)
+  { 
+    removed_info <<- distinct(.[.$dhea_upper_hits > 2, c("SubjectID", "dhea_upper_hits")])
+    . # Return to data
+  } %>% # Save IDs & number of hits of participants to be removed
+  filter(!SubjectID %in% participants_to_remove) %>%
+    # Remove participants with >2 detection limit hits across all their rows
+  
+  mutate(
+    Cortisol..nmol.L. = ifelse(Cortisol..nmol.L. > 80, NA, Cortisol..nmol.L.),
+      # Remove cortisol > 80 nmol/L
+    DHEA..nmol.L. = ifelse(DHEA..nmol.L. == 5.205, NA, DHEA..nmol.L.)
+      # Remove DHEA at the detection limit
+  ) %>% 
+  select(-dhea_upper_hits)
+    # Drop helper column
+analysis_dat <- analysis_dat %>%
+  mutate(
+    Booket..Clock.Time = na_if(trimws(Booket..Clock.Time), ""),
+    MEMs..Clock.Time = na_if(trimws(MEMs..Clock.Time), ""),
+    Sleep.Diary.reported.wake.time = na_if(trimws(Sleep.Diary.reported.wake.time), "")
+  ) %>% # Convert empty strings to NAs and trim leading spaces
+  mutate(
+    booklet_time = as.POSIXct(
+      paste(Collection.Date, Booket..Clock.Time),
+      format = "%m/%d/%Y %H:%M"
+        # MM/DD/YYYY format
+    ),
+    cap_time = as.POSIXct(
+      paste(Collection.Date, MEMs..Clock.Time),
+      format = "%m/%d/%Y %H:%M"
+        # MM/DD/YYYY format
+    ),
+    reported_wake_time = as.POSIXct(
+      paste(Collection.Date, Sleep.Diary.reported.wake.time),
+      format = "%m/%d/%Y %H:%M"
+        # MM/DD/YYYY format
+    )
+  ) %>% # Combine date + time into full timestamps
+  mutate(
+    wake_diff_booklet = as.numeric(booklet_time - reported_wake_time, units = "mins"),
+      # Difference between booklet time and wake time
+    wake_diff_cap = as.numeric(cap_time - reported_wake_time, units = "mins"),
+      # Difference between cap time and wake time
+    diff_booklet_cap = as.numeric(booklet_time - cap_time, units = "mins")
+      # Difference between booklet time and cap time
+  ) # Create new variables as times in mins
+```
+
+# RQ1
+
+What is the agreement between the subject’s recordings of sampling times compared to the times recorded by an electronic monitoring cap?
+
+Answer this question with:
+
+- LMM 
+  - Outcome is book min from wake
+  - Predictor is cap time from wake
+  - Include random intercept for subject
+  - If perfect agreement, intercept will be 0 and slope will be 1
+
+```{r}
+rq1_agreement <- lmer(wake_diff_booklet ~ wake_diff_cap + (1 | SubjectID), data = analysis_dat)
+  # LMM
+summary(rq1_agreement)
+```
+Visually, the intercept and slope are not equal to 0 and 1. Also, the t-values reveal that neither is statistically different from 0 (0.888 and 0.796). I would still like to verify that the slope is not equal to 1 statistically. 
+
+```{r}
+car::linearHypothesis(rq1_agreement, "wake_diff_cap = 1")
+```
+
+There is no evidence that the intercept differs significantly from 0. Thus, there is no evidence of systematic bias such as one measure being always earlier or always later than the other. However, we can reject the null hypothesis that the slope is not different from 1 and conclude that the relationship between cap and booklet time from wake does not resemble the 1:1 line the investigator described in the desired scatterplot. Rather, changes in cap time do not translate to changes in booklet time as there is no evidence that the slope differs significantly from 0.
+
