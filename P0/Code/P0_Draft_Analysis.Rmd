@@ -7,7 +7,9 @@ date: "2026-01-29"
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
+library(tidyr)
 library(lme4)
+library(ggplot2)
 raw_dat <- read.csv(here::here("P0/DataRaw", "Project0_Clean_v2.csv"))
 ```
 
@@ -67,6 +69,11 @@ analysis_dat <- analysis_dat %>%
         # MM/DD/YYYY format
     )
   ) %>% # Combine date + time into full timestamps
+  group_by(SubjectID, Collection.Date) %>%   
+    # Group by subject/day
+  fill(reported_wake_time, .direction = "down") %>%  
+    # Fill missing wake times so no NAs
+  ungroup() %>%
   mutate(
     wake_diff_booklet = as.numeric(booklet_time - reported_wake_time, units = "mins"),
       # Difference between booklet time and wake time
@@ -101,4 +108,83 @@ car::linearHypothesis(rq1_agreement, "wake_diff_cap = 1")
 ```
 
 There is no evidence that the intercept differs significantly from 0. Thus, there is no evidence of systematic bias such as one measure being always earlier or always later than the other. However, we can reject the null hypothesis that the slope is not different from 1 and conclude that the relationship between cap and booklet time from wake does not resemble the 1:1 line the investigator described in the desired scatterplot. Rather, changes in cap time do not translate to changes in booklet time as there is no evidence that the slope differs significantly from 0.
+
+# TODO - update interpretation based on updated data manipulation
+
+# RQ2: 
+
+Are subjects adhering accurately to the +30min and +10 hour sampling times required by a study protocol?
+
+Answer this question with:
+- Descriptive statistics
+  - What proportion falls within +/- 7.5min and what proportion falls within +/- 15 min? 
+  
+```{r}
+analysis_dat %>%
+  summarise(
+    n = sum(!is.na(diff_booklet_cap)),
+    n_missing = sum(is.na(diff_booklet_cap)),
+    perc_within_7.5  = mean(abs(diff_booklet_cap) <= 7.5, na.rm = TRUE) * 100,
+    perc_within_15   = mean(abs(diff_booklet_cap) <= 15,  na.rm = TRUE) * 100
+  ) #Summarize adherence overall 
+
+analysis_dat %>%
+  filter(Collection.Sample %in% c(2, 4)) %>%
+  group_by(Collection.Sample) %>%
+  summarise(
+    n = sum(!is.na(diff_booklet_cap)),
+    n_missing = sum(is.na(diff_booklet_cap)),
+    perc_within_7.5  = mean(abs(diff_booklet_cap) <= 7.5, na.rm = TRUE) * 100,
+    perc_within_15   = mean(abs(diff_booklet_cap) <= 15,  na.rm = TRUE) * 100
+  ) # Summarize adherence only for 30min and 10hr samples
+```
+
+# RQ3:
+
+What are the changes of cortisol and DHEA over time?
+
+Answer this question with:
+- Piecewise LMM with knot at 30 min
+  - Use booklet time because fewer missing values and matches with sleep diary
+  - Outcome is cortisol or DHEA
+  - Primary predictor is book time from wake
+  
+```{r}
+# Split time into piecewise slopes 
+analysis_dat$time_pre30  <- pmin(analysis_dat$wake_diff_booklet, 30)
+analysis_dat$time_post30 <- pmax(analysis_dat$wake_diff_booklet - 30, 0)
+
+rq3_cortisol <- lmer(Cortisol..nmol.L. ~ time_pre30 + time_post30 + (1 | SubjectID), data = analysis_dat)
+summary(rq3_cortisol)
+```
+
+Based on this model, the estimated cortisol level at wake time (0 min) is 7.222 nmol/L (intercept). The slope from 0-30min is 0.025 nmol/L/min, but it is not strongly significant (t = 1.094). This us unexpected because we were expecting to see a sharp rise in the first 30 min. Then, the slope after 30min is -0.009 nmol/L/min with strong statistical significance (t = -8.101). This can be visualized in the plot below. 
+  
+```{r}
+cort_dat <- rq3_cortisol@frame %>%
+  mutate(row_id = as.numeric(rownames(rq3_cortisol@frame)))  
+  # Extract data used in model
+cort_dat$pred_cortisol <- predict(rq3_cortisol, re.form = NA)
+  # Add predictions (population level)
+
+analysis_dat <- analysis_dat %>%
+  mutate(row_id = row_number())
+plot_dat <- cort_dat %>%
+  left_join(
+    analysis_dat %>% select(row_id, wake_diff_booklet),
+    by = "row_id"
+  ) # Merge time variable from full dataset
+
+ggplot(plot_dat, aes(x = wake_diff_booklet, y = Cortisol..nmol.L.)) +
+  geom_point(alpha = 0.4) +
+  geom_line(aes(y = pred_cortisol), color = "blue", linewidth = 1) +
+  geom_vline(xintercept = 30, linetype = "dashed", color = "red") +
+  labs(
+    x = "Booklet Time Since Wake (min)",
+    y = "Cortisol (nmol/L)",
+    title = "Predicted Cortisol (Knot at 30 min)"
+  ) +
+  theme_minimal()
+```
+
 
