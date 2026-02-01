@@ -10,6 +10,7 @@ library(dplyr)
 library(tidyr)
 library(lme4)
 library(ggplot2)
+library(ggforce)
 raw_dat <- read.csv(here::here("P0/DataRaw", "Project0_Clean_v2.csv"))
 ```
 
@@ -101,15 +102,36 @@ rq1_agreement <- lmer(wake_diff_booklet ~ wake_diff_cap + (1 | SubjectID), data 
   # LMM
 summary(rq1_agreement)
 ```
-Visually, the intercept and slope are not equal to 0 and 1. Also, the t-values reveal that neither is statistically different from 0 (0.888 and 0.796). I would still like to verify that the slope is not equal to 1 statistically. 
+Looking at the fixed effects, the t-values allow us to conclude that the intercept and slope are both significantly different from 0. Based on the residual for the random effects (1022.32), there appears to be large within-person variability. I also wanted to investigate to see if we fail to reject the null hypothesis that the slope is not equal to 1. 
 
 ```{r}
 car::linearHypothesis(rq1_agreement, "wake_diff_cap = 1")
 ```
 
-There is no evidence that the intercept differs significantly from 0. Thus, there is no evidence of systematic bias such as one measure being always earlier or always later than the other. However, we can reject the null hypothesis that the slope is not different from 1 and conclude that the relationship between cap and booklet time from wake does not resemble the 1:1 line the investigator described in the desired scatterplot. Rather, changes in cap time do not translate to changes in booklet time as there is no evidence that the slope differs significantly from 0.
+There is no evidence that the slope differs significantly from 1 (p-value = 0.3889). Thus, changes in cap time do resemble the 1:1 line that the investigator described on the desired scatterplot. However, as the intercept differs significantly from 0, there is evidence of systematic bias, where the booklet time is 6.703 minutes earlier than the cap time, on average, at wake time.
 
-# TODO - update interpretation based on updated data manipulation
+I plotted below the summary of these findings below. The red dashed line shows perfect agreement, and the blue line shows the modeled trend. Overall, the booklet and the cap agree well, but the booklet time is systematically earlier than the cap time, which is more obvious in the zoomed in section. 
+
+```{r}
+rq1_dat <- rq1_agreement@frame %>%
+  dplyr::mutate(row_id = as.numeric(rownames(rq1_agreement@frame)))
+ # Extract data used in model
+rq1_dat$pred_booklet <- predict(rq1_agreement, re.form = NA)
+  # Add predictions (population level)
+
+ggplot(rq1_dat, aes(x = wake_diff_cap, y = wake_diff_booklet)) +
+  geom_point(alpha = 0.6) +
+  geom_abline(intercept = 0, slope = 1, color = "red", linetype = "dashed", linewidth = 1) +
+  geom_line(aes(y = pred_booklet), color = "blue", linewidth = 1) +
+  labs(
+    x = "Cap Time Since Wake (min)",
+    y = "Booklet Time Since Wake (min)",
+    title = "Agreement Between Booklet and Cap"
+  ) +
+  facet_zoom(xlim = c(0, 50), ylim = c(0, 50), horizontal = FALSE)
+    # Zoom in from wake-50 min
+```
+
 
 # RQ2: 
 
