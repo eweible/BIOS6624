@@ -8,7 +8,7 @@ date: "2026-01-29"
 knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
 library(tidyr)
-library(lme4)
+library(lmerTest)
 library(ggplot2)
 library(ggforce)
 raw_dat <- read.csv(here::here("P0/DataRaw", "Project0_Clean_v2.csv"))
@@ -96,6 +96,8 @@ Answer this question with:
   - Predictor is cap time from wake
   - Include random intercept for subject
   - If perfect agreement, intercept will be 0 and slope will be 1
+
+Used lmerTest to include p-values in output (calculated with Satterthwaite)
 
 ```{r}
 rq1_agreement <- lmer(wake_diff_booklet ~ wake_diff_cap + (1 | SubjectID), data = analysis_dat)
