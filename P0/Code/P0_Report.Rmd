@@ -1,0 +1,46 @@
+---
+output:
+  bookdown::pdf_document2:
+    toc: false
+    number_sections: false
+documentclass: article
+geometry: margin=1in
+fontsize: 12pt
+linestretch: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- Title here: -->
+# \textit{An Instigation into Time Agreement, Subject Adherence, and Patterns of Cortisol and DHEA in Novel Saliva Collection Device}
+
+<!-- Name here: -->
+Ezra Weible[^1]
+
+[^1]: Biostatistics Masters Student, Colorado School of Public Health, University of Colorado Anschutz Medical Campus, Aurora, CO
+
+## Introduction
+
+0.5 pages; describe data and scientific hypotheses of interest. Rephrase scientific hypotheses into statistical hypotheses. 
+
+## Methods
+
+2 pages; past tense; no results; brief description of data management and cleaning. In depth description of analysis methods. Justify and explain data analysis approach. 
+
+## Results
+
+1-1.5 pages; present results from analysis. Also include descriptive statistics and model selection, if applicable. Reference tables and figures here. Full interpretation of results including pt estimates/CI/pvals/interpretation.
+
+## Discussion
+
+0.5-1pg; interpret results in context of scientific Qs; discuss limitations
+
+## Appendix
+
+Directory: [Github](https://github.com/eweible/BIOS6624.git)
+
+File name: P0/Code/P0_Report.Rmd
+
+Tables and Figures:
