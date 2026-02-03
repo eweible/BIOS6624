@@ -47,6 +47,12 @@ analysis_dat <- raw_dat %>%
   ) %>% 
   select(-dhea_upper_hits)
     # Drop helper column
+
+# # Print about removal to share with investigator
+# cat("Number of participants removed:", nrow(removed_info), "\n")
+# cat("Removed participant ID(s):", removed_info$SubjectID, "\n")
+# cat("Number of DHEA values at detection limit:", removed_info$dhea_upper_hits)
+
 analysis_dat <- analysis_dat %>%
   mutate(
     Booket..Clock.Time = na_if(trimws(Booket..Clock.Time), ""),
