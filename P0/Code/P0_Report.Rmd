@@ -166,7 +166,10 @@ thresholds <- data.frame(
   threshold = c(-7.5, 7.5, -15, 15),
   label = c("7.5", "7.5", "15", "15")
 )
-
+facet_labels <- c(
+    `2` = "30 minutes",
+    `4` = "10 hours"
+  )
 rq2_plot <- analysis_dat %>%
   pivot_longer(
     cols = c(wake_diff_cap, wake_diff_booklet),
@@ -196,8 +199,8 @@ rq2_plot <- analysis_dat %>%
     aes(yintercept = threshold, color = label, linetype = label),
     linewidth = 0.8
   ) +
-  
-  facet_wrap(~ Collection.Sample, scales = "free_y") +
+  facet_wrap(~ Collection.Sample, scales = "free_y", 
+             labeller = labeller(Collection.Sample = facet_labels)) +
   theme_minimal() +
   labs(
     x = "",
@@ -294,7 +297,7 @@ rq3_plot_c <- ggplot(plot_dat, aes(x = wake_diff_booklet, y = exp(cortisol_log))
   labs(
     x = "Booklet Time Since Wake (min)",
     y = "Cortisol (nmol/L)",
-    title = "Predicted Cortisol (Knot at 30 min)"
+    title = "Predicted Cortisol Concentrations over Day"
   ) +
   theme_minimal()
 rq3_plot_c
@@ -355,7 +358,7 @@ rq3_plot_d <- ggplot(plot_dat, aes(x = wake_diff_booklet, y = exp(DHEA_log))) +
   labs(
     x = "Booklet Time Since Wake (min)",
     y = "DHEA (nmol/L)",
-    title = "Predicted DHEA (Knot at 30 min)"
+    title = "Predicted DHEA Concentrations over Day"
   ) +
   theme_minimal()
 rq3_plot_d
@@ -422,7 +425,7 @@ Additionally, the study lacked a definitive measure of sampling time, making it 
 
 \break
 
-```{r echo = FALSE, tab.cap="Table 1"}
+```{r echo = FALSE, tab.cap="Table 1", warning=FALSE, message=FALSE}
 tab1 <- analysis_dat %>%
   select(
     Collection.Sample,
@@ -456,16 +459,16 @@ tab1 <- analysis_dat %>%
 
 tab1
 ```
-```{r, echo=FALSE, fig.cap="Research Question 1 Agreement between reported booklet time since wake and reported cap time since wake.", out.width="75%", fig.align="center"}
+```{r, echo=FALSE, fig.cap="Research Question 1 -- Agreement between reported booklet time since wake and reported cap time since wake.", out.width="70%", fig.align="center", warning=FALSE, message=FALSE, results='hide'}
 rq1_plot
 ```
-```{r, echo=FALSE, fig.cap="Research Question 1 Agreement between reported booklet time since wake and reported cap time since wake.", out.width="75%", fig.align="center"}
-rq1_plot
+```{r, echo=FALSE, fig.cap="Research Question 2 -- Adherence to 30 minute and 10 hour sampling times by booklet and cap.", out.width="70%", fig.align="center", warning=FALSE, message=FALSE, results='hide'}
+rq2_plot
 ```
-```{r, echo=FALSE, fig.cap="Research Question 3 Predicted trend of cortisol over time since wake, reported from booklet.", out.width="75%", fig.align="center"}
+```{r, echo=FALSE, fig.cap="Research Question 3 -- Predicted trend of cortisol over time since wake, reported from booklet.", out.width="70%", fig.align="center", warning=FALSE, message=FALSE, results='hide'}
 rq3_plot_c
 ```
-```{r, echo=FALSE, fig.cap="Research Question 3 Predicted trend of DHEA over time since wake, reported from booklet.", out.width="75%", fig.align="center"}
+```{r, echo=FALSE, fig.cap="Research Question 3 -- Predicted trend of DHEA over time since wake, reported from booklet.", out.width="70%", fig.align="center", warning=FALSE, message=FALSE, results='hide'}
 rq3_plot_d
 ```
 
