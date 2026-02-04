@@ -8,6 +8,8 @@ geometry: margin=1in
 fontsize: 12pt
 linestretch: 2
 fig.cap: true
+header-includes:
+  - \usepackage{float}
 ---
 
 ```{r setup, include=FALSE}
@@ -370,11 +372,11 @@ Ezra Weible[^1]
 
 The investigator provided data from 31 healthy control subjects who collected saliva samples at home using the Saliva Procurement and Integrated Testing (SPIT) booklet, measuring cortisol and DHEA concentrations. Participants recorded sampling times in the booklet, and an electronic monitoring cap independently recorded bottle-opening times. Samples were scheduled at wake, 30 minutes after waking (as reported in sleep diary), before lunch, and 600 minutes (10 hours) after waking. Time of waking and lunch varied by subject.
 
-The scientific questions were: 1) How closely do the booklet reported sampling times agree with electronic cap times?, 2) Do participants adhere to the 30 minute and 10 hour sampling times required by a study protocol?, 3) How cortisol and DHEA change from wake to 30 minutes and from 30 minutes to 10 hours? These translate into the following statistical tasks: 1) Test whether the intercept equals 0 and slope equals 1 in a linear mixed model (LMM) regression of booklet time from wake on cap time from wake., 2) Summarize the proportion samples within $\pm$ 7.5 minutes and $\pm$ 15 minutes at the target times., 3) Test whether cortisol and DHEA increase from wake to 30 minutes and estimate the rate of decline from 30 minutes to 10 hours using a piecewise LMM.
+The scientific questions were: 1) How closely do the booklet reported sampling times agree with electronic cap times?, 2) Do participants adhere to the 30 minute and 10 hour sampling times required by a study protocol?, 3) How cortisol and DHEA change from wake to 30 minutes and from 30 minutes to 10 hours? These translate into three statistical tasks: 1) Testing whether booklet and cap times showed perfect agreement (intercept = 0, slope = 1) using a linear mixed model (LMM), 2) Summarizing the proportion of samples within $\pm$ 7.5 minutes and $\pm$ 15 minutes of the 30 minute and 10 hour targets, and 3) Estimate the change in  cortisol and DHEA from wake to 30 minutes and from 30 minutes to 10 hours using a piecewise LMM.
 
 ## Methods
 
-All analyses were conducted using R v4.5.1 (2025-06-13 ucrt). Data management included removal of DHEA values at the assay's upper detection limit (5.205 nmol/L) and exclusion of subjects with at least two such values due to possible underlying conditions. Cortisol values exceeding 80 nmol/L were also removed as due to implausibility. Reported sampling times from the booklet and electronic cap and reported wake time from the sleep diary were converted to POSIXct timestamps. For each sample, three variables were computed: 1) booklet time minus wake time, 2) cap time minus wake time, 3) booklet time minus cap time. All differences were stored in minutes. These processed variables were used for all subsequent analyses.
+All analyses were conducted using R v4.5.1 (2025-06-13 ucrt). Data management included removal of DHEA values at the assay's upper detection limit (5.205 nmol/L) and exclusion of subjects with at least two such values due to possible underlying conditions. Cortisol values exceeding 80 nmol/L were removed due to implausibility. Reported sampling times from the booklet and electronic cap and reported wake time from the sleep diary were converted to POSIXct timestamps. For each sample, three variables were computed: 1) booklet time minus wake time, 2) cap time minus wake time, 3) booklet time minus cap time. All differences were stored in minutes. These processed variables were used for all subsequent analyses.
 
 #### Research Question 1:
 
@@ -386,47 +388,39 @@ Adherence to the required 30 minute and 10 hour samples was descriptively assess
 
 #### Research Question 3:
 
-To characterize changes in cortisol and DHEA across the day, piecewise LMM were fitted with a knot at 30 minutes post-wake as reported by the sleep diary. The 30 minute knot was chosen to correspond to the expected patterns of cortisol and DHEA over the course of a day. The primary predictor was booklet time from wake, chosen as it had fewer missing values than cap time and aligned more closely with the sleep diary. Two time variables were constructed, representing minutes from wake to 30 minutes and minutes beyond 30 minutes. The distinct time variables allows for the estimation of separate linear slope for the wake to 30 minute and after 30 minute measurements across the day, to account for the diurnal nature of these hormones. Cortisol and DHEA concentrations were log transformed prior to modeling to improve normality. Each hormone was modeled with the log concentration as the outcome and a random intercept for subject to account for repeated measures.
+To characterize changes in cortisol and DHEA across the day, piecewise LMMs were fitted with a knot at 30 minutes post-wake as reported by the sleep diary. The 30 minute knot was chosen to correspond to the expected patterns of cortisol and DHEA over the course of a day. The primary predictor was booklet time from wake, chosen as it had fewer missing values than cap time and aligned more closely with the sleep diary. Two time variables were constructed, representing minutes from wake to 30 minutes and minutes beyond 30 minutes. The distinct time variables allow for the estimation of separate linear slope for the wake to 30 minute and after 30 minute measurements across the day, to account for the diurnal nature of these hormones. Cortisol and DHEA concentrations were log transformed prior to modeling to improve normality. Each hormone was modeled with the log concentration as the outcome and a random intercept for subject to account for repeated measures.
 
 ## Results
 
-*Table 1* summarizes the data across the four daily collection points. Missingness was highest for the cap time measurements, validating the use of booklet times in RQ3. One participant (ID 3037) was excluded due to four DHEA measurements at the assay's upper detection limit.
+*Table 1* summarizes key variables and missingness across the four collection times. Missingness was highest for the cap time measurements, particularly in samples 1 and 2. Hormone concentrations had the expected decline across the day, with highest cortisol and DHEA values in samples 1 and 2. One participant (ID 3037) was excluded due to four DHEA measurements at the assay's upper detection limit.
 
 #### Research Question 1: 
 
-A LMM was used to assess agreement between the recorded booklet and cap sampling times. The slope differed significantly from 0 (p-value < 0.001), indicating that for every one minute increase in cap time, booklet time increased by 0.994 minutes, on average (95\% CI: [0.98, 1.01]). As the 95\% CI overlaps with 1, the cap times reflect a one-to-one relationship with booklet times. However, the intercept differed significantly from 0 (p-value = 0.028), indicating that booklet times were, on average, recorded 6.7 minutes earlier than cap times at wake (95/% CI: [-12.53, -0.88]). Thus, there is systematic bias. This pattern is illustrated in *Figure 1*, where the red dashed line represents perfect agreement and the blue line shows the fitted model. The zoomed-in panel highlights the consistent offset of booklet times relative to cap times. 
+A LMM was used to assess agreement between the recorded booklet and cap sampling times. The slope differed significantly from 0 (p < 0.001). For every one minute increase in cap time, booklet time increased by 0.994 minutes, on average (95\% CI: [0.98, 1.01]). As the 95\% CI includes 1, there is a near one-to-one relationship. However, the intercept differed significantly from 0 (p = 0.028), indicating that booklet times were, on average, recorded 6.7 minutes earlier than cap times at wake (95/% CI: [-12.53, -0.88]). *Figure 1* illustrates this systematic bias and one-to-one relationship. 
 
 #### Research Question 2:
 
-When examining the difference between booklet and cap times for the second and fourth sample of the day, intended to be at 30 minutes and 10 hours post wake, 59-64\% of samples fell within $\pm$ 7.5 minutes and 75-80\% fell within $\pm$ 15 minutes. These times indicate moderate agreement between the two time sources, aligning with the findings from **Research Question 1**.
+When examining the difference between booklet and cap times for the second and fourth sample of the day (intended to occur 30 minutes and 10 hours post wake), 59-64\% of samples fell within $\pm$ 7.5 minutes and 75-80\% fell within $\pm$ 15 minutes. These values indicate moderate agreement between the two time sources, consistent with the findings from *Research Question 1*.
 
-Adherence to the intended sample times of 30 minutes and 10 hours post wake was evaluated separately for booklet and cap times relative to the reported sleep diary wake time. These findings are visualized in *Figure 2*. Booklet times consistently demonstrated higher adherence than cap times. At the 30 minute sample, 78.6\% of booklet times fell within $\pm$ 7.5 minutes of the target compared to only 52.9\% of cap times. For the $\pm$ 15 minute window, this expanded to 90.5\% of booklet times and 70.6\% of cap times. A similar pattern was observed for the 10 hour sample, though adherence is lower overall, with 48.1\% (booklet) vs. 33.8\% (cap) within $\pm$ 7.5 minutes and 55.8\% (booklet) vs. 41.2\% (cap) within $\pm$ 15 minutes. 
-
-These results, combined with the higher missingness in cap times (*Table 1*), supports the decision to use booklet times as the time variable for modeling cortisol and DHEA in **Research Question 3**. 
+Adherence to the intended sampling times was evaluated separately for booklet and cap times relative to the reported wake time (*Figure 2*). Booklet times consistently demonstrated higher adherence than cap times. At the 30 minute sample, 78.6\% of booklet times fell within $\pm$ 7.5 minutes of the target compared to 52.9\% of cap times. For $\pm$ 15 minutes, adherence expanded to 90.5\% and 70.6\%, respectively. A similar pattern was observed for the 10 hour sample, though adherence was lower overall: 48.1\% (booklet) vs. 33.8\% (cap) within $\pm$ 7.5 minutes and 55.8\% (booklet) vs. 41.2\% (cap) within $\pm$ 15 minutes. 
 
 #### Research Question 3: 
 
-Piecewise LMMs with a knot at 30 minutes were used to characterize diurnal trajectories of cortisol and DHEA. Both outcomes were modeled on the log scale to improve normality as the original distributions had right skews. 
+Piecewise LMMs with a knot at 30 minutes were used to characterize diurnal trajectories of cortisol and DHEA. Both outcomes were modeled on the log scale due to right skewed distributions. Booklet times were selected as the primary time variable as they showed higher adherence and lower missingness than cap times.
 
-The estimated intercept for cortisol differed significantly from 0 on the log scale (p-value < 0.001), corresponding to an estimated cortisol concentration at wake of 5.39 nmol/L (95\% CI: [4.41, 6.58]. From wake to 30 minutes, the slope showed a minor increase in cortisol of 0.62% per minute on average (95\% CI: [-0.10, 1.34]), corresponding to an 18.6\% increase over the 30 minutes. However, the slope did not differ significantly from 0 (p-value = 0.094), so we do not have enough evidence to reject reject the null hypothesis that cortisol did not increase from wake to 30 minutes and we cannot conclude that there was a spike during this time. After 30 minutes, cortisol declined significantly (p-value < 0.001). There was an estimated 12\% decrease in cortisol per hour (95\% CI: [11.0, 15.6]). The fitted trajectory is visualized in *Figure 3*, with the knot at 30 minutes indicated by a vertical dashed line.
+For cortisol, the intercept differed significantly from 0 (p < 0.001), corresponding to an estimated waking concentration of 5.39 nmol/L (95\% CI: [4.41, 6.58]). From wake to 30 minutes, cortisol increased by 0.62% per minute on average (95\% CI: [-0.10, 1.34]), but this slope was not statistically significant (p = 0.094). After 30 minutes, cortisol declined significantly (p < 0.001) with a 12\% decrease per hour on average (95\% CI: [11.0, 15.6]). *Figure 3* displays the fitted trajectory.
 
-Unlike cortisol, the estimated intercept for DHEA was not significantly different from 0 on the log scale (p-value = 0.067), corresponding to an estimated DHEA concentration at wake of 1.24 nmol/L (95\% CI: [0.99, 1.56]. From wake to 30 minutes, the slope showed a sharp decrease in DHEA of 1.76% per minute on average (95\% CI: [-2.35, -1.17]), corresponding to an 52.8\% decrease over the 30 minutes (p-value < 0.001). After 30 minutes, DHEA continued to decline at a slower but still significant rate (p-value < 0.001). There was an estimated 9.2\% decrease in DHEA per hour (95\% CI: [-7.44, -11.04]). The fitted trajectory is visualized in *Figure 4*.
-
-Overall, both hormones showed an expected decline after 30 minutes. However, neither had the anticipated spike from wake to 30 minutes, with cortisol having a mild increase and DHEA having a sharp drop. Although these results support the use of a piecewise model with a knot at 30 minutes, they do not align with the anticipated clinical results for these hormones, which could indicate issues with the novel method. 
+For DHEA, the intercept was not significantly different from 0 (p = 0.067), corresponding to an estimated DHEA concentration at wake of 1.24 nmol/L (95\% CI: [0.99, 1.56]). From wake to 30 minutes, DHEA declined sharply by 1.76% per minute on average (95\% CI: [-2.35, -1.17]), corresponding to an 52.8\% decrease over the 30 minutes (p < 0.001). After 30 minutes, DHEA continued to decline at an estimated 9.2\% decrease in DHEA per hour (95\% CI: [-7.44, -11.04]; p < 0.001). The fitted trajectory is visualized in *Figure 4*.
 
 ## Discussion
 
-This study evaluated the feasibility and accuracy of a novel at‑home saliva collection method using the SPIT booklet, with a focus on agreement between reported and electronically recorded sampling times, adherence to protocol‑specified sampling windows, and characterization of diurnal cortisol and DHEA patterns. Together, the findings provide insight into both participant behavior and the performance of the collection device in a naturalistic setting.
+This study evaluated the feasibility and accuracy of the SPIT booklet for at‑home saliva collection by examining agreement between booklet‑recorded and electronically recorded sampling times, adherence to protocol‑specified sampling windows, and diurnal cortisol and DHEA patterns. The results indicate that booklet and cap times were closely aligned but not interchangeable, with booklet times showing higher adherence and lower missingness. These findings support the use of booklet times as the primary timing source for modeling hormone trajectories.
 
-Several limitations should be considered. The study lacked a true ground‑truth measure of sampling time, making it impossible to determine whether discrepancies reflected reporting error, device malfunction, or participant behavior. The sample size was modest, which may limit generalizability and reduce power to detect subtle effects. Assay constraints required removal of DHEA values at the upper detection limit, and one participant was excluded for repeated censoring. The electronic cap did not function consistently, contributing to missingness and limiting its utility as a reference standard. Finally, at‑home collection introduces natural variability in participant routines and environmental conditions. Despite these limitations, the findings support the feasibility of the SPIT booklet and provide guidance for improving timing accuracy in future at‑home endocrine studies.
+Cortisol and DHEA both declined after 30 minutes as expected, but neither showed the anticipated early increase. This pattern may reflect timing inaccuracies, participant behavior during at‑home collection, or limitations of the electronic cap.
 
-## Appendix
+Additionally, the study lacked a definitive measure of sampling time, making it difficult to determine whether discrepancies reflected reporting error, device malfunction, or participant behavior. The sample size may limit generalizability and reduce power to detect subtle effects. Assay constraints required censoring of DHEA values at the upper detection limit, and one participant was excluded for repeated censoring. The electronic cap showed inconsistent performance, contributing to missingness and limiting its utility as a reference standard. Despite these limitations, the findings support the feasibility of the SPIT booklet and provide guidance for improving timing accuracy in future at‑home endocrine studies.
 
-Directory: [Github](https://github.com/eweible/BIOS6624.git)
-
-File name: P0/Code/P0_Report.Rmd
-
-#### Tables and Figures:
+\break
 
 ```{r echo = FALSE, tab.cap="Table 1"}
 tab1 <- analysis_dat %>%
@@ -462,20 +456,24 @@ tab1 <- analysis_dat %>%
 
 tab1
 ```
-
-```{r, echo=FALSE, fig.cap="Research Question 1 Agreement between reported booklet time since wake and reported cap time since wake."}
+```{r, echo=FALSE, fig.cap="Research Question 1 Agreement between reported booklet time since wake and reported cap time since wake.", out.width="75%", fig.align="center"}
 rq1_plot
 ```
-
-```{r, echo=FALSE, fig.cap="Research Question 2 Adherence to repoting windows.", warning=FALSE}
-rq2_plot
+```{r, echo=FALSE, fig.cap="Research Question 1 Agreement between reported booklet time since wake and reported cap time since wake.", out.width="75%", fig.align="center"}
+rq1_plot
 ```
-
-```{r, echo=FALSE, fig.cap="Research Question 3 Predicted trend of cortisol over time since wake, reported from booklet."}
+```{r, echo=FALSE, fig.cap="Research Question 3 Predicted trend of cortisol over time since wake, reported from booklet.", out.width="75%", fig.align="center"}
 rq3_plot_c
 ```
-
-```{r, echo=FALSE, fig.cap="Research Question 3 Predicted trend of DHEA over time since wake, reported from booklet."}
+```{r, echo=FALSE, fig.cap="Research Question 3 Predicted trend of DHEA over time since wake, reported from booklet.", out.width="75%", fig.align="center"}
 rq3_plot_d
 ```
+
+\break
+
+## Appendix
+
+Directory: [Github](https://github.com/eweible/BIOS6624.git)
+
+File name: P0/Code/P0_Report.Rmd
 
