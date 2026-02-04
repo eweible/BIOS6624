@@ -204,7 +204,7 @@ rq2_plot <- analysis_dat %>%
   theme_minimal() +
   labs(
     x = "",
-    y = "Difference from Sleep Diary Wake Time (min)",
+    y = "Difference from Intended Time From Wake (min)",
     title = "Adherence to Measurement Times from Wake Time",
     fill = "Source",
     color = "Threshold",
@@ -366,7 +366,7 @@ rq3_plot_d <- ggplot(plot_dat, aes(x = wake_diff_booklet, y = exp(DHEA_log))) +
 rq3_plot_d
 ```
 <!-- Title here: -->
-# \textit{Timing, Adherence, and Hormone Profiles in a Novel Saliva Device}
+# \textit{Timing, Adherence, and Hormone Profiles in a Novel, At-Home Saliva Collection Device}
 
 <!-- Name here: -->
 Ezra Weible[^1]
@@ -421,9 +421,9 @@ For DHEA, the intercept was not significantly different from 0 (p = 0.067), corr
 
 This study evaluated the feasibility and accuracy of the SPIT booklet for at‑home saliva collection by examining agreement between participant recorded and electronically recorded sampling times, adherence to sampling windows, and diurnal cortisol and DHEA patterns. The results indicate that booklet and cap times were closely aligned but not interchangeable, with booklet times being systematically earlier with higher adherence and lower missingness. These findings support the use of booklet times as the primary timing source for modeling hormone trajectories.
 
-Cortisol and DHEA both declined after 30 minutes as expected, but neither showed the anticipated early increase. This pattern may reflect timing inaccuracies, participant behavior during at‑home collection, or limitations of the electronic cap.
+Cortisol and DHEA both declined after 30 minutes as expected, but neither showed the anticipated early increase. This pattern may reflect timing inaccuracies or participant behavior during at‑home collection.
 
-Additionally, the study lacked a definitive measure of sampling time, making it difficult to determine whether discrepancies reflected reporting error, device malfunction, or participant behavior. The sample size may limit generalizability and reduce power to detect subtle effects. Assay constraints required censoring of DHEA values at the upper detection limit, and one participant was excluded for repeated censoring. The electronic cap showed inconsistent performance, contributing to missingness and limiting its utility as a reference standard. Despite these limitations, the findings support the feasibility of the SPIT booklet and provide guidance for improving timing accuracy in future at‑home endocrine studies.
+Additionally, the study lacked a definitive measure of sampling time, making it difficult to determine whether discrepancies between booklet and cap times reflected reporting error, device malfunction, or participant behavior. The sample size may limit generalizability and reduce power to detect subtle effects. Assay constraints required censoring of DHEA values at the upper detection limit, and one participant was excluded for repeated censoring. The electronic cap showed inconsistent performance, contributing to missingness and limiting its utility as a reference standard. Despite these limitations, the findings support the feasibility of the SPIT booklet and provide guidance for improving timing accuracy in future at‑home endocrine studies.
 
 \break
 
