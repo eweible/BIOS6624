@@ -6,6 +6,28 @@ date: "2026-02-08"
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(naniar)
+library(table1)
+dat_raw <- read.csv(here::here("P1/DataRaw", "hiv_6624_final.csv"))
 ```
 
-Testing
+# Glimpsing Data
+
+Initial overview:
+```{r}
+summary(dat_raw)
+glimpse(dat_raw)
+```
+
+Missing data:
+```{r}
+naniar::gg_miss_var(dat_raw)
+naniar::vis_miss(dat_raw)
+```
+
+Table 1:
+```{r}
+table1(~ hard_drugs + hivpos + ART + everART + VLOAD + LEU3N + AGG_PHYS + AGG_MENT | years, dat_raw)
+```
+
