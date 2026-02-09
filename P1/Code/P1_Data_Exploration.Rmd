@@ -27,14 +27,14 @@ naniar::vis_miss(dat_raw)
 ```
 Is there a reason for this missing data? There is some for the VLOAD and LEU3N, as well as a minimal amount for hard drug use, which seem to be the focus for the analysis.
 
-
 Table 1:
 ```{r}
 table1(~ hard_drugs + hivpos + ART + everART + VLOAD + LEU3N + AGG_PHYS + AGG_MENT + age | years, dat_raw)
 ```
+Dropoff year 0 to year 2? 
 
 ```{r}
 hist(dat_raw$VLOAD); hist(dat_raw$LEU3N)
 hist(log(dat_raw$VLOAD)); hist(sqrt(dat_raw$LEU3N))
 ```
-What are reasonable values/ranges of these values? What extremes are unrealistic? 
+What are reasonable values/ranges of these values? What extremes are unrealistic? These align with the codebook allowable values
