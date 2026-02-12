@@ -2,6 +2,8 @@
 title: "P1_Data_Exploration"
 output: html_document
 date: "2026-02-08"
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -34,7 +36,84 @@ table1(~ hard_drugs + hivpos + ART + everART + VLOAD + LEU3N + AGG_PHYS + AGG_ME
 Dropoff year 0 to year 2? 
 
 ```{r}
-hist(dat_raw$VLOAD); hist(dat_raw$LEU3N)
-hist(log(dat_raw$VLOAD)); hist(sqrt(dat_raw$LEU3N))
+hist(dat_raw$VLOAD); hist(dat_raw$LEU3N); hist(dat_raw$AGG_PHYS); hist(dat_raw$AGG_MENT)
+hist(log10(dat_raw$VLOAD)); hist(sqrt(dat_raw$LEU3N)); hist(log(101-dat_raw$AGG_PHYS)); hist(log(101-dat_raw$AGG_MENT))
 ```
 What are reasonable values/ranges of these values? What extremes are unrealistic? These align with the codebook allowable values
+
+
+# Potential analysis approach:
+
+Maybe use adjusted mean difference in year 2 outcome between baseline hard drug users vs. non users, controlling for baseline values, baseline covariates (age, BMI, smoking, education, race)
+
+Frequentist: linear regression models, one for each outcome. Model year 2 outcomes predicted by hard drug use, covariates, and baseline value
+- VLOAD (logged)
+- LEU3N (maybe sqrt transformation?)
+- AGG_PHYS
+- AGG_MENT
+
+Treat adherence as a mediator, comparing predictor from model without and with adherence (reduction in slope suggests mediation)
+
+Potentially use FDR control for p-values among separate models 
+
+Compare baseline characteristics and hard drug use between those with and without year 2 data to try and identify possible bias (regression assuming MAR)
+
+Bayesian: similar to frequentist (linear regression) but with weekly informative/vague priors
+- normal priors on regression coefficients
+- half normal prior on residual SD
+- stan program with design matrix x and outcome y
+- posterior sampling with cmdstanr
+- diagnostics, posterior summaries, and WAIC/LOO
+
+Clarifying questions:
+- What strategies for collapsing race and education categories would you recommend? 
+  e.g. end with white (non-hispanic), black (non-hispanic), other (742, 345, 134)
+      or, white (non-hispanic), black (non-hispanic), hispanic, other (742, 345, 121, 74) - less ideal
+  e.g. end with high school and below, some college, college and higher (291, 434, 496)
+- Do you want a formal mediation analysis or just a model comparison for adherence? 
+
+
+# Investigation into Relevant Data
+
+```{r}
+dat_sub <- dat_raw %>%
+  filter(years %in% c(0, 2)) %>%
+    # Filter to baseline and year 2
+  mutate(
+    race_group = case_when(
+      RACE == 1 ~ "White_nonHisp",
+      RACE == 3 ~ "Black_nonHisp",
+      RACE %in% c(2, 4, 5, 6, 7, 8) ~ "Other",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  mutate(
+    educ_group = case_when(
+      EDUCBAS %in% c(1, 2, 3) ~ "HS_and_below",
+      EDUCBAS == 4 ~ "Some_College",
+      EDUCBAS %in% c(5, 6, 7) ~ "College_and_above",
+      TRUE ~ NA_character_
+    )
+  )
+
+baseline_drugs <- dat_sub %>%
+  filter(years == 0) %>%
+  select(newid, hard_drugs)
+    # Identify baseline drug use by id
+dat_sub <- dat_sub %>%
+  left_join(baseline_drugs, by = "newid", suffix = c("", "_baseline"))
+    # Add baseline drug use to dataset
+
+table1(~ VLOAD + LEU3N + AGG_PHYS + AGG_MENT + age + BMI + SMOKE + educ_group + race_group | hard_drugs, dat_sub %>% filter(years == 0))
+table1(~ VLOAD + LEU3N + ADH| hard_drugs_baseline, dat_sub %>% filter(years == 2))
+```
+
+```{r}
+dat_2 <- dat_sub %>%
+  filter(years == 0)
+par(mfrow = c(2,4))
+hist(dat_2$VLOAD, main = "VLOAD Year 2", xlab = "VLOAD"); hist(dat_2$LEU3N, main = "LEU3N Year 2", xlab = "LEU3N"); hist(dat_2$AGG_PHYS, main = "Physical Year 2", xlab = "Physical QoL"); hist(dat_raw$AGG_MENT, main = "Mental Year 2", xlab = "Mental QoL")
+hist(log10(dat_2$VLOAD), main = "log10(VLOAD) Year 2", xlab = "log10(VLOAD)"); hist(sqrt(dat_2$LEU3N), main = "sqrt(LEU3N) Year 2", xlab = "sqrt(LEU3N)"); hist(log(101-dat_2$AGG_PHYS), main = "log(101-Physical) Year 2", xlab = "log(101-Physical)"); hist(log(101-dat_2$AGG_MENT), main = "log(101-Mental) Year 2", xlab = "log(101-Mental)")
+```
+
+
