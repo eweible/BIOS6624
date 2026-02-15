@@ -116,4 +116,54 @@ hist(dat_2$VLOAD, main = "VLOAD Year 2", xlab = "VLOAD"); hist(dat_2$LEU3N, main
 hist(log10(dat_2$VLOAD), main = "log10(VLOAD) Year 2", xlab = "log10(VLOAD)"); hist(sqrt(dat_2$LEU3N), main = "sqrt(LEU3N) Year 2", xlab = "sqrt(LEU3N)"); hist(log(101-dat_2$AGG_PHYS), main = "log(101-Physical) Year 2", xlab = "log(101-Physical)"); hist(log(101-dat_2$AGG_MENT), main = "log(101-Mental) Year 2", xlab = "log(101-Mental)")
 ```
 
+```{r}
+dat_vload <- dat_sub %>%
+  group_by(newid) %>%
+  filter(
+    any(years == 0 & !is.na(VLOAD)) &
+    any(years == 2 & !is.na(VLOAD))
+  ) %>%
+  ungroup()
+
+dat_leu3n <- dat_sub %>%
+  group_by(newid) %>%
+  filter(
+    any(years == 0 & !is.na(LEU3N)) &
+    any(years == 2 & !is.na(LEU3N))
+  ) %>%
+  ungroup()
+
+dat_phys <- dat_sub %>%
+  group_by(newid) %>%
+  filter(
+    any(years == 0 & !is.na(AGG_PHYS)) &
+    any(years == 2 & !is.na(AGG_PHYS))
+  ) %>%
+  ungroup()
+
+dat_ment <- dat_sub %>%
+  group_by(newid) %>%
+  filter(
+    any(years == 0 & !is.na(AGG_MENT)) &
+    any(years == 2 & !is.na(AGG_MENT))
+  ) %>%
+  ungroup()
+
+nrow(dat_vload); nrow(dat_leu3n); nrow(dat_phys); nrow(dat_ment)
+  # [1] 974
+  # [1] 974
+  # [1] 998
+  # [1] 998
+
+length(intersect(dat_vload$newid, dat_leu3n$newid))
+  # 483
+length(intersect(dat_vload$newid, dat_phys$newid))
+  # 480
+length(intersect(dat_vload$newid, dat_ment$newid))
+  # 480
+length(intersect(dat_phys$newid, dat_ment$newid))
+  # 499
+length(Reduce(intersect, list(dat_vload$newid, dat_leu3n$newid, dat_phys$newid, dat_ment$newid)))
+  # 476
+```
 
