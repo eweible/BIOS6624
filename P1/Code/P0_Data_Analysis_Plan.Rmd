@@ -1,0 +1,45 @@
+---
+output:
+  bookdown::pdf_document2:
+    toc: false
+    number_sections: false
+documentclass: article
+geometry: margin=1in
+fontsize: 12pt
+linestretch: 2
+fig.cap: true
+header-includes:
+  - \usepackage{float}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- Title here: -->
+# \textit{Analysis Plan for }
+
+<!-- Name here: -->
+Ezra Weible[^1]
+
+[^1]: Biostatistics Masters Student, Colorado School of Public Health, CU Anschutz Medical Campus
+
+## Introduction
+
+1-2 pg, describe understanding of the project, explain the (statistical) hypotheses you will test or evaluate in the final report
+
+## Preliminary Methods
+
+<1 pg, Describe your data analysis plan, including any data cleaning or management. You plan can change as you conduct the analysis or as you get feedback from the 
+investigator.
+
+## Preliminary Analysis (Optional)
+
+Basic descriptive statistics or a “Table 1”
+
+Exploratory data analyses that illustrate any special features of the data that may need to be 
+considered in the final analysis
+
+Examples: outlier observations, skewed distributions that may require transformation
+
+# TODO - overall: no more than 1.5-2pg double spaced, 12pt font
