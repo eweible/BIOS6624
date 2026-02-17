@@ -1,0 +1,63 @@
+---
+output:
+  bookdown::pdf_document2:
+    toc: false
+    number_sections: false
+documentclass: article
+geometry: margin=1in
+fontsize: 12pt
+linestretch: 2
+fig.cap: true
+header-includes:
+  - \usepackage{float}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- Title here: -->
+# \textit{Analysis Plan for }
+
+<!-- Name here: -->
+Ezra Weible[^1]
+
+[^1]: Biostatistics Masters Student, Colorado School of Public Health, CU Anschutz Medical Campus
+
+## Introduction
+
+This project is a secondary analysis of data from the Multicenter AIDS Cohort Study, an ongoing prospective cohort that studies HIV-1 infection in homosexual and bisexual men in four major US cities. This parent study includes longitudinal data collection before and after initiation of the standard treatment for HIV infected patients, Highly Active Antiretroviral Treatment (HAART). The specific subset of data used for this project was 476 individuals with measures of viral load, CD4 count, physical and mental quality of life scores at baseline (immediately prior to initiating HAART) and two years after, along with demographic and behavioral information including hard drug use at baseline, defined as injection drugs or illicit heroin/opiate use. Other relevant covariates include age, BMI, smoking status, education, and race/ethnicity. 
+
+The primary question of interest is whether treatment response two years after starting HAART differs between individuals who did and did not report hard drug usage at baseline. Both clinical and quality of life outcomes will be assessed to identify the success of HAART. Statistically, after adjusting for baseline outcome and covariates, we will be testing if there is a difference in year 2 treatment response between those who used hard drugs at baseline and those who did not.
+
+1-2 pg, describe understanding of the project, explain the (statistical) hypotheses you will test or evaluate in the final report
+
+## Preliminary Methods
+
+This analysis will be done in R v4.5.2 (2025-10-31 ucrt). The analysis will use data from 476 subjects who reported baseline hard drug use status and had complete measurements of viral load, CD4 count, and physical and mental quality of life scores at baseline and two years after initiating HAART. Participants missing any of these measures will be excluded. BMI values coded as -1 or 999 will be set to missing and the two implausible values will also be set as missing. Categorical covariates will be collapsed as follows to ensure adequate sample sizes by category: 
+  - Smoking status collapsed into current smoker and former/non smoker,
+  - Education status collapsed to no college degree and college degree and above, 
+  - Race/ethnicity collapsed to white non-Hispanic and other 
+  
+The four outcomes of interest are viral load (log10 scale), CD4 count, and physical and mental quality of life scores at two years after initiating HAART. The primary exposure investigated is hard drug use at baseline. Covariates included in models are age, BMI, smoking status, education, and race/ethnicity. Adherence to HAART will also be investigated as a potential mediator by comparing models with and without year 2 adherence as a covariate. Patterns of missingness and dropout will be investigated descriptively for each outcome by baseline hard drug use to identify potential bias in the results. 
+
+For the frequentist analysis, linear regression of each of the year 2 outcomes will be performed, adjusting for the noted covariates as well as baseline outcome values. Unadjusted p-values and 95\% confidence intervals will be reported, acknowledging that multiple outcomes were modeled. For the Bayesian analysis, the same regression structure as frequentist models will be implemented using STAN. Vaguely informative priors will be used as prior knowledge is limited. Regression coefficients will use N(0, 1000) and the error term will be a half-normal. The intercept will not be centered, which should not strongly influence results as the 1000 variance is large. R-hat and ESS will diagnose model success. Clinically meaningful differences for each outcome are as follows:  
+  - 0.5 log10 change for viral load
+  - 50 cell chance for CD4 count
+  - 2 point change for quality of life scores
+
+# TODO - decide DIC, WAIC, LOO & if we need AIC for frequentist equivalent? 
+
+<1 pg, Describe your data analysis plan, including any data cleaning or management. You plan can change as you conduct the analysis or as you get feedback from the 
+investigator.
+
+## Preliminary Analysis (Optional)
+
+Basic descriptive statistics or a “Table 1”
+
+Exploratory data analyses that illustrate any special features of the data that may need to be 
+considered in the final analysis
+
+Examples: outlier observations, skewed distributions that may require transformation
+
+# TODO - overall: no more than 1.5-2pg double spaced, 12pt font

@@ -82,16 +82,21 @@ dat_sub <- dat_raw %>%
   mutate(
     race_group = case_when(
       RACE == 1 ~ "White_nonHisp",
-      RACE == 3 ~ "Black_nonHisp",
-      RACE %in% c(2, 4, 5, 6, 7, 8) ~ "Other",
+      RACE %in% c(2, 3, 4, 5, 6, 7, 8) ~ "Other",
       TRUE ~ NA_character_
     )
   ) %>%
   mutate(
     educ_group = case_when(
-      EDUCBAS %in% c(1, 2, 3) ~ "HS_and_below",
-      EDUCBAS == 4 ~ "Some_College",
-      EDUCBAS %in% c(5, 6, 7) ~ "College_and_above",
+      EDUCBAS %in% c(1, 2, 3, 4) ~ "No_College_Degree",
+      EDUCBAS %in% c(5, 6, 7) ~ "College_Degree_and_above",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  mutate(
+    smoke_group = case_when(
+      SMOKE %in% c(1, 2) ~ "Non_or_Former_Smoker",
+      SMOKE == 3 ~ "Current_Smoker",
       TRUE ~ NA_character_
     )
   )
@@ -165,5 +170,22 @@ length(intersect(dat_phys$newid, dat_ment$newid))
   # 499
 length(Reduce(intersect, list(dat_vload$newid, dat_leu3n$newid, dat_phys$newid, dat_ment$newid)))
   # 476
+
+dat_sub_outcomes <- dat_sub[dat_sub$newid %in% Reduce(intersect, list(dat_vload$newid, dat_leu3n$newid, dat_phys$newid, dat_ment$newid)),]
+  # Subset to those that have all four outcomes at times 0 and 2
+dat_sub_outcomes <- dat_sub_outcomes %>%
+  group_by(newid) %>%
+  filter(
+    any(years == 0 & !is.na(hard_drugs))
+  ) %>%
+  ungroup() %>% # Subset to those that also have hard drug use at time 0
+  mutate(
+    hard_drugs_baseline = factor(hard_drugs_baseline, levels = c(0, 1), labels = c("No Hard Drug Use", "Hard Drug Use"))
+  ) %>%
+  mutate(BMI = if_else(BMI < 0 | BMI > 250, NA_real_, BMI))
+    # Exclude for being clinically implausible (999 and -1 are insufficient or improbable data, also some values in the 500s)
+
+table1(~ log10(VLOAD) + LEU3N + AGG_PHYS + AGG_MENT + age + BMI + smoke_group + educ_group + race_group | hard_drugs_baseline, dat_sub_outcomes %>% filter(years == 0), caption="Table 1a: Baseline Characteristics by Baseline Hard Drug Use")
+table1(~ log10(VLOAD) + LEU3N + ADH| hard_drugs_baseline, dat_sub_outcomes %>% filter(years == 2), caption="Table 1b: Year 2 Characteristics by Baseline Hard Drug Use")
 ```
 
