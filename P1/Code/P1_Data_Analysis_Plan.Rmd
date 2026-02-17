@@ -14,23 +14,109 @@ header-includes:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(table1)
+dat_raw <- read.csv(here::here("P1/DataRaw", "hiv_6624_final.csv"))
 ```
 
 <!-- Title here: -->
-# \textit{Analysis Plan for }
+# \textit{Analysis Plan for HAART Outcomes by Drug Use}
 
 <!-- Name here: -->
 Ezra Weible[^1]
 
 [^1]: Biostatistics Masters Student, Colorado School of Public Health, CU Anschutz Medical Campus
 
+```{r data_management, echo=FALSE}
+dat_sub <- dat_raw %>%
+  filter(years %in% c(0, 2)) %>%
+    # Filter to baseline and year 2
+  mutate(
+    race_group = case_when(
+      RACE == 1 ~ "White nonHisp",
+      RACE %in% c(2, 3, 4, 5, 6, 7, 8) ~ "Other",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  mutate(
+    educ_group = case_when(
+      EDUCBAS %in% c(1, 2, 3, 4) ~ "No College Degree",
+      EDUCBAS %in% c(5, 6, 7) ~ "College Degree and above",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  mutate(
+    smoke_group = case_when(
+      SMOKE %in% c(1, 2) ~ "Non or Former Smoker",
+      SMOKE == 3 ~ "Current Smoker",
+      TRUE ~ NA_character_
+    )
+  )
+
+baseline_drugs <- dat_sub %>%
+  filter(years == 0) %>%
+  select(newid, hard_drugs)
+    # Identify baseline drug use by id
+dat_sub <- dat_sub %>%
+  left_join(baseline_drugs, by = "newid", suffix = c("", "_baseline"))
+    # Add baseline drug use to dataset
+dat_vload <- dat_sub %>%
+  group_by(newid) %>%
+  filter(
+    any(years == 0 & !is.na(VLOAD)) &
+    any(years == 2 & !is.na(VLOAD))
+  ) %>%
+  ungroup()
+
+dat_leu3n <- dat_sub %>%
+  group_by(newid) %>%
+  filter(
+    any(years == 0 & !is.na(LEU3N)) &
+    any(years == 2 & !is.na(LEU3N))
+  ) %>%
+  ungroup()
+
+dat_phys <- dat_sub %>%
+  group_by(newid) %>%
+  filter(
+    any(years == 0 & !is.na(AGG_PHYS)) &
+    any(years == 2 & !is.na(AGG_PHYS))
+  ) %>%
+  ungroup()
+
+dat_ment <- dat_sub %>%
+  group_by(newid) %>%
+  filter(
+    any(years == 0 & !is.na(AGG_MENT)) &
+    any(years == 2 & !is.na(AGG_MENT))
+  ) %>%
+  ungroup()
+
+dat_sub_outcomes <- dat_sub[dat_sub$newid %in% Reduce(intersect, list(dat_vload$newid, dat_leu3n$newid, dat_phys$newid, dat_ment$newid)),]
+  # Subset to those that have all four outcomes at times 0 and 2
+dat_sub_outcomes <- dat_sub_outcomes %>%
+  group_by(newid) %>%
+  filter(
+    any(years == 0 & !is.na(hard_drugs))
+  ) %>%
+  ungroup() %>% # Subset to those that also have hard drug use at time 0
+  mutate(
+    hard_drugs_baseline = factor(hard_drugs_baseline, levels = c(0, 1), labels = c("No Hard Drug Use", "Hard Drug Use"))
+  ) %>%
+  mutate(BMI = if_else(BMI < 0 | BMI > 250, NA_real_, BMI))
+    # Exclude for being clinically implausible (999 and -1 are insufficient or improbable data, also some values in the 500s)
+
+table1a <- table1(~ log10(VLOAD) + LEU3N + AGG_PHYS + AGG_MENT + age + BMI + smoke_group + educ_group + race_group | hard_drugs_baseline, dat_sub_outcomes %>% filter(years == 0), caption="Baseline Characteristics by Baseline Hard Drug Use")
+table1b <- table1(~ log10(VLOAD) + LEU3N + ADH| hard_drugs_baseline, dat_sub_outcomes %>% filter(years == 2), caption="Year 2 Characteristics by Baseline Hard Drug Use")
+```
+
 ## Introduction
 
 This project is a secondary analysis of data from the Multicenter AIDS Cohort Study, an ongoing prospective cohort that studies HIV-1 infection in homosexual and bisexual men in four major US cities. This parent study includes longitudinal data collection before and after initiation of the standard treatment for HIV infected patients, Highly Active Antiretroviral Treatment (HAART). The specific subset of data used for this project was 476 individuals with measures of viral load, CD4 count, physical and mental quality of life scores at baseline (immediately prior to initiating HAART) and two years after, along with demographic and behavioral information including hard drug use at baseline, defined as injection drugs or illicit heroin/opiate use. Other relevant covariates include age, BMI, smoking status, education, and race/ethnicity. 
 
 The primary question of interest is whether treatment response two years after starting HAART differs between individuals who did and did not report hard drug usage at baseline. Both clinical and quality of life outcomes will be assessed to identify the success of HAART. Statistically, after adjusting for baseline outcome and covariates, we will be testing if there is a difference in year 2 treatment response between those who used hard drugs at baseline and those who did not.
-
-1-2 pg, describe understanding of the project, explain the (statistical) hypotheses you will test or evaluate in the final report
 
 ## Preliminary Methods
 
@@ -41,23 +127,61 @@ This analysis will be done in R v4.5.2 (2025-10-31 ucrt). The analysis will use 
   
 The four outcomes of interest are viral load (log10 scale), CD4 count, and physical and mental quality of life scores at two years after initiating HAART. The primary exposure investigated is hard drug use at baseline. Covariates included in models are age, BMI, smoking status, education, and race/ethnicity. Adherence to HAART will also be investigated as a potential mediator by comparing models with and without year 2 adherence as a covariate. Patterns of missingness and dropout will be investigated descriptively for each outcome by baseline hard drug use to identify potential bias in the results. 
 
-For the frequentist analysis, linear regression of each of the year 2 outcomes will be performed, adjusting for the noted covariates as well as baseline outcome values. Unadjusted p-values and 95\% confidence intervals will be reported, acknowledging that multiple outcomes were modeled. For the Bayesian analysis, the same regression structure as frequentist models will be implemented using STAN. Vaguely informative priors will be used as prior knowledge is limited. Regression coefficients will use N(0, 1000) and the error term will be a half-normal. The intercept will not be centered, which should not strongly influence results as the 1000 variance is large. R-hat and ESS will diagnose model success. Clinically meaningful differences for each outcome are as follows:  
+For the frequentist analysis, linear regression of each of the year 2 outcomes will be performed, adjusting for the noted covariates as well as baseline outcome values. Unadjusted p-values and 95\% confidence intervals will be reported, acknowledging that multiple outcomes were modeled. For the Bayesian analysis, the same regression structure as frequentist models will be implemented using STAN. Vaguely informative priors will be used as prior knowledge is limited. Regression coefficients will use N(0, 1000) and the error term will be a half-normal. The intercept will not be centered, which should not strongly influence results as the 1000 variance is large. R-hat and ESS will be used as diagnostics and posterior summaries and LOO-CV will be reported. Clinically meaningful differences for each outcome are as follows:  
   - 0.5 log10 change for viral load
   - 50 cell chance for CD4 count
   - 2 point change for quality of life scores
 
-# TODO - decide DIC, WAIC, LOO & if we need AIC for frequentist equivalent? 
+## Appendix
 
-<1 pg, Describe your data analysis plan, including any data cleaning or management. You plan can change as you conduct the analysis or as you get feedback from the 
-investigator.
+```{r tables, echo=FALSE}
+table1a
+table1b
+```
 
-## Preliminary Analysis (Optional)
+```{r plot_outcome, echo=FALSE, warning=FALSE, message=FALSE}
+var_specs <- tibble(
+  variable = c("VLOAD", "LEU3N", "AGG_PHYS", "AGG_MENT"),
+  label = c("Viral Load (log10)", 
+            "CD4 Count", 
+            "Physical Quality of Life", 
+            "Mental Quality of Life"),
+  binwidth = c(0.5, 100, 5, 5)
+)
 
-Basic descriptive statistics or a “Table 1”
+df_long <- dat_sub_outcomes %>%
+  filter(years == 2) %>%
+  mutate(VLOAD = log10(VLOAD)) %>%
+  pivot_longer(
+    cols = c(VLOAD, LEU3N, AGG_PHYS, AGG_MENT),
+    names_to = "variable",
+    values_to = "value"
+  ) %>%
+  left_join(var_specs, by = "variable") %>%
+  mutate(label = factor(label, levels = var_specs$label))
 
-Exploratory data analyses that illustrate any special features of the data that may need to be 
-considered in the final analysis
+ggplot() +
+  imap(split(df_long, df_long$label), ~
+    geom_histogram(
+      data = .x,
+      aes(x = value),
+      binwidth = .x$binwidth[1],
+      color = "white",
+      fill = "steelblue"
+    )
+  ) +
+  facet_wrap(~ label, scales = "free") +
+  theme_minimal() +
+  labs(
+    x = "",
+    y = "Count",
+    title = "Distributions of Year 2 Outcomes"
+  )
+```
 
-Examples: outlier observations, skewed distributions that may require transformation
 
-# TODO - overall: no more than 1.5-2pg double spaced, 12pt font
+Code Directory: https://github.com/eweible/BIOS6624.git
+
+File name: P1/Code/P1_Data_Analysis_Plan.Rmd
+
+Data Directory: C:/Users/weiblee/OneDrive/Documents/Anschutz/Spring 2026/6624_Advanced/Weible_Advanced/P1/DataRaw
