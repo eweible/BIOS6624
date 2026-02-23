@@ -111,6 +111,10 @@ dat_sub_outcomes <- dat_sub_outcomes %>%
 
 table1a <- table1(~ log10(VLOAD) + LEU3N + AGG_PHYS + AGG_MENT + age + BMI + smoke_group + educ_group + race_group | hard_drugs_baseline, dat_sub_outcomes %>% filter(years == 0), caption="Baseline Characteristics by Baseline Hard Drug Use")
 table1b <- table1(~ log10(VLOAD) + LEU3N + AGG_PHYS + AGG_MENT + ADH| hard_drugs_baseline, dat_sub_outcomes %>% filter(years == 2), caption="Year 2 Characteristics by Baseline Hard Drug Use")
+
+dat_sub_base <- dat_sub_outcomes %>%
+  filter(years == 0,
+         if_all(c(age, BMI, smoke_group, educ_group, race_group), ~ !is.na(.x)))
 ```
 
 ## Introduction
