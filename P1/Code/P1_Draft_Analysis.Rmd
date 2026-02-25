@@ -1,0 +1,121 @@
+---
+title: "P1_Draft_Analysis"
+output: html_document
+date: "2026-02-25"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(ggplot2)
+library(table1)
+dat_raw <- read.csv(here::here("P1/DataRaw", "hiv_6624_final.csv"))
+```
+
+```{r}
+dat_sub <- dat_raw %>%
+  filter(years %in% c(0, 2)) %>%
+    # Filter to baseline and year 2
+  mutate(
+    race_group = case_when(
+      RACE == 1 ~ "White nonHisp",
+      RACE %in% c(2, 3, 4, 5, 6, 7, 8) ~ "Other",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  mutate(
+    educ_group = case_when(
+      EDUCBAS %in% c(1, 2, 3, 4) ~ "No College Degree",
+      EDUCBAS %in% c(5, 6, 7) ~ "College Degree and above",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  mutate(
+    smoke_group = case_when(
+      SMOKE %in% c(1, 2) ~ "Non or Former Smoker",
+      SMOKE == 3 ~ "Current Smoker",
+      TRUE ~ NA_character_
+    )
+  )
+
+baseline_drugs <- dat_sub %>%
+  filter(years == 0) %>%
+  select(newid, hard_drugs)
+    # Identify baseline drug use by id
+dat_sub <- dat_sub %>%
+  left_join(baseline_drugs, by = "newid", suffix = c("", "_baseline"))
+    # Add baseline drug use to dataset
+dat_vload <- dat_sub %>%
+  group_by(newid) %>%
+  filter(
+    any(years == 0 & !is.na(VLOAD)) &
+    any(years == 2 & !is.na(VLOAD))
+  ) %>%
+  ungroup()
+
+dat_leu3n <- dat_sub %>%
+  group_by(newid) %>%
+  filter(
+    any(years == 0 & !is.na(LEU3N)) &
+    any(years == 2 & !is.na(LEU3N))
+  ) %>%
+  ungroup()
+
+dat_phys <- dat_sub %>%
+  group_by(newid) %>%
+  filter(
+    any(years == 0 & !is.na(AGG_PHYS)) &
+    any(years == 2 & !is.na(AGG_PHYS))
+  ) %>%
+  ungroup()
+
+dat_ment <- dat_sub %>%
+  group_by(newid) %>%
+  filter(
+    any(years == 0 & !is.na(AGG_MENT)) &
+    any(years == 2 & !is.na(AGG_MENT))
+  ) %>%
+  ungroup()
+
+dat_sub_outcomes <- dat_sub[dat_sub$newid %in% Reduce(intersect, list(dat_vload$newid, dat_leu3n$newid, dat_phys$newid, dat_ment$newid)),]
+  # Subset to those that have all four outcomes at times 0 and 2
+dat_sub_outcomes <- dat_sub_outcomes %>%
+  group_by(newid) %>%
+  filter(
+    any(years == 0 & !is.na(hard_drugs))
+  ) %>%
+  ungroup() %>% # Subset to those that also have hard drug use at time 0
+  mutate(
+    hard_drugs_baseline = factor(hard_drugs_baseline, levels = c(0, 1), labels = c("No Hard Drug Use", "Hard Drug Use"))
+  ) %>%
+  mutate(BMI = if_else(BMI < 0 | BMI > 250, NA_real_, BMI))
+    # Exclude for being clinically implausible (999 and -1 are insufficient or improbable data, also some values in the 500s)
+
+table1a <- table1(~ log10(VLOAD) + LEU3N + AGG_PHYS + AGG_MENT + age + BMI + smoke_group + educ_group + race_group | hard_drugs_baseline, dat_sub_outcomes %>% filter(years == 0), caption="Baseline Characteristics by Baseline Hard Drug Use")
+table1b <- table1(~ log10(VLOAD) + LEU3N + AGG_PHYS + AGG_MENT + ADH | hard_drugs_baseline, dat_sub_outcomes %>% filter(years == 2), caption="Year 2 Characteristics by Baseline Hard Drug Use")
+
+dat_sub_base <- dat_sub_outcomes %>%
+  filter(years == 0,
+         if_all(c(age, BMI, smoke_group, educ_group, race_group), ~ !is.na(.x)))
+```
+
+TODO: analysis steps
+- collapse ADH to upper 2 and lower 2 groups (>95% and <95%)
+- reduce to 463 individuals with complete covariate data
+- use dplyr to transform dat_sub so that you have y2 log10VLOAD/other outcomes and baseline hard drug use/covariates/y2 adherence all available in one single row
+- model with simple linear regression with separate models for all 4 outcomes
+  - store coefficients, unadjusted pvals, 95% CIs
+  - model with adherence and store % change in outcome (are there differences in adherence/relationship?)
+- get STAN to run and model with bayesian linear regression with N(0,1000) for regression coefficients and HN(0,1000) for error. 
+  - store posterior mean, HDPI, posterior probability (use clinically meaningful differences)
+  - model with adherence and store % change in outcome
+- Make table of outcomes that combines frequentist and bayesian outcomes previously stored (table 3)
+- Consider what figures or any additional tables that you want to include
+  - perhaps separate table of adherence % changes to table 3
+  - perhaps some figure to visualize significant outcomes by hard drug status/somehow visualize the models (think boxplot of each outcome with 2 for each color coded by hard drug use, each outcome as a panel)
+- write report 
+- make presentation
+
+
