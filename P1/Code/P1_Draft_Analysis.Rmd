@@ -102,6 +102,9 @@ TODO: analysis steps
 - write report 
 - make presentation
 
+
+# Frequentist Analysis 
+
 ```{r}
 mod_vload <- lm(log10VLOAD_2 ~ hard_drugs_0 + log10VLOAD_0 + age_0 + BMI_0 +
                   smoke_group_0 + educ_group_0 + race_group_0, data = dat_wide)
@@ -143,5 +146,219 @@ summary(mod_phys_adh)
 ```{r}
 summary(mod_ment)
 summary(mod_ment_adh)
+```
+
+
+# Bayesian analysis
+
+## Set up STAN - only run one time, then comment out
+```{r}
+# # Dependencies
+# library(cmdstanr)
+# library(bayesplot)  # diagnostic plots of the MCMC chains
+# library(posterior)  # for summarizing posterior draws
+# library(bayestestR) # for calculating higest density posterior intervals
+# library(mcmcse)     # for calculating MCMCSE's
+# library(loo)        # for getting model fit statistics (WAIC and LOO-IC)
+# library(dplyr)
+# library(tibble)
+# 
+# ####Bayesian Analysis
+# ###########################################################################
+# # STEP 1: Define the model
+# # This is a general linear regression set up for STAN
+# # It is using a half normal prior on sigma
+# # and normal priors on the regression coefficients
+# # once the stan file is written it can be reused
+# 
+# # Do not need to rerun after initial. Works for any
+# # linear regression you would like to do. Uses half normal
+# # Saves program in correct file format in STAN
+# ###########################################################################
+# 
+# stan_file <- write_stan_file("data {
+#   int<lower=0> N;                  // number of observations
+#   int<lower=0> P;                  // number of predictors including intercept
+#   matrix[N, P] X;                  // design matrix (first column = intercept)
+#   vector[N] y;                     // outcome
+# 
+#   vector[P] prior_mean;            // prior means for each beta
+#   vector<lower=0>[P] prior_sd;     // prior SDs for each beta
+# 
+#   real<lower=0> sigma_prior_sd;    // SD for half-normal prior on sigma
+# }
+# 
+# parameters {
+#   vector[P] beta;                  // regression coefficients
+#   real<lower=0> sigma;             // residual SD
+# }
+# 
+# model {
+#   // Vectorized priors for regression coefficients
+#   beta ~ normal(prior_mean, prior_sd);
+# 
+#   // Half-normal prior for sigma
+#   sigma ~ normal(0, sigma_prior_sd);
+# 
+#   // Likelihood
+#   y ~ normal(X * beta, sigma);
+# 
+# 
+# }
+# 
+# generated quantities {
+#   // log likelihood for each observation for calculating model fit stats
+#   vector[N] log_lik;
+#   for (n in 1:N) {
+#     log_lik[n] = normal_lpdf(y[n] | X[n] * beta, sigma);}
+#   }", dir="STAN", basename='linear_regression_half_normal'
+# )
+# 
+# ###########################################################################
+# # STEP 2: Compile the Stan program
+# ###########################################################################
+# mod <- cmdstan_model('STAN/linear_regression_half_normal.stan')
+```
+
+## Run models
+
+Set up data
+```{r}
+# Outcome
+y1 <- dat_wide$log10VLOAD_2
+y2 <- dat_wide$LEU3N_2
+y3 <- dat_wide$AGG_PHYS_2
+y4 <- dat_wide$AGG_MENT_2
+
+
+# Design matrix
+X1a <- model.matrix(~ hard_drugs_0 + log10VLOAD_0 + age_0 + BMI_0 +
+                    smoke_group_0 + educ_group_0 + race_group_0, data = dat_wide)
+X1b <- model.matrix(~ hard_drugs_0 + log10VLOAD_0 + age_0 + BMI_0 +
+                    smoke_group_0 + educ_group_0 + race_group_0 + adh_group_2,
+                   data = dat_wide)
+X2a <- model.matrix(~ hard_drugs_0 + LEU3N_0 + age_0 + BMI_0 +
+                    smoke_group_0 + educ_group_0 + race_group_0, data = dat_wide)
+X2b <- model.matrix(~ hard_drugs_0 + LEU3N_0 + age_0 + BMI_0 +
+                    smoke_group_0 + educ_group_0 + race_group_0 + adh_group_2,
+                   data = dat_wide)
+X3a <- model.matrix(~ hard_drugs_0 + AGG_PHYS_0 + age_0 + BMI_0 +
+                    smoke_group_0 + educ_group_0 + race_group_0, data = dat_wide)
+X3b <- model.matrix(~ hard_drugs_0 + AGG_PHYS_0 + age_0 + BMI_0 +
+                    smoke_group_0 + educ_group_0 + race_group_0 + adh_group_2,
+                   data = dat_wide)
+X4a <- model.matrix(~ hard_drugs_0 + AGG_MENT_0 + age_0 + BMI_0 +
+                    smoke_group_0 + educ_group_0 + race_group_0, data = dat_wide)
+X4b <- model.matrix(~ hard_drugs_0 + AGG_MENT_0 + age_0 + BMI_0 +
+                    smoke_group_0 + educ_group_0 + race_group_0 + adh_group_2,
+                   data = dat_wide)
+
+N1a <- nrow(X1a)
+P1a <- ncol(X1a)
+N1b <- nrow(X1b)
+P1b <- ncol(X1b)
+N2a <- nrow(X2a)
+P2a <- ncol(X2a)
+N2b <- nrow(X2b)
+P2b <- ncol(X2b)
+N3a <- nrow(X3a)
+P3a <- ncol(X3a)
+N3b <- nrow(X3b)
+P3b <- ncol(X3b)
+N4a <- nrow(X4a)
+P4a <- ncol(X4a)
+N4b <- nrow(X4b)
+P4b <- ncol(X4b)
+
+# Priors: Normal(0, 1000) for all betas
+prior_mean_1a <- rep(0, P1a); prior_sd_1a   <- rep(1000, P1a)
+prior_mean_1b <- rep(0, P1b); prior_sd_1b   <- rep(1000, P1b)
+prior_mean_2a <- rep(0, P2a); prior_sd_2a   <- rep(1000, P2a)
+prior_mean_2b <- rep(0, P2b); prior_sd_2b   <- rep(1000, P2b)
+prior_mean_3a <- rep(0, P3a); prior_sd_3a   <- rep(1000, P3a)
+prior_mean_3b <- rep(0, P3b); prior_sd_3b   <- rep(1000, P3b)
+prior_mean_4a <- rep(0, P4a); prior_sd_4a   <- rep(1000, P4a)
+prior_mean_4b <- rep(0, P4b); prior_sd_4b   <- rep(1000, P4b)
+
+# Half-normal(0, 1000) for sigma
+sigma_prior_sd <- 1000
+
+data_list_1a <- list(
+  N = N1a, P = P1a, X = X1a, y = y1,
+  prior_mean = prior_mean_1a,
+  prior_sd = prior_sd_1a,
+  sigma_prior_sd = sigma_prior_sd
+)
+data_list_1b <- list(
+  N = N1b, P = P1b, X = X1b, y = y1,
+  prior_mean = prior_mean_1b,
+  prior_sd = prior_sd_1b,
+  sigma_prior_sd = sigma_prior_sd
+)
+data_list_2a <- list(
+  N = N2a, P = P2a, X = X2a, y = y2,
+  prior_mean = prior_mean_2a,
+  prior_sd = prior_sd_2a,
+  sigma_prior_sd = sigma_prior_sd
+)
+data_list_2b <- list(
+  N = N2b, P = P2b, X = X2b, y = y2,
+  prior_mean = prior_mean_2b,
+  prior_sd = prior_sd_2b,
+  sigma_prior_sd = sigma_prior_sd
+)
+data_list_3a <- list(
+  N = N3a, P = P3a, X = X3a, y = y3,
+  prior_mean = prior_mean_3a,
+  prior_sd = prior_sd_3a,
+  sigma_prior_sd = sigma_prior_sd
+)
+data_list_3b <- list(
+  N = N3b, P = P3b, X = X3b, y = y3,
+  prior_mean = prior_mean_3b,
+  prior_sd = prior_sd_3b,
+  sigma_prior_sd = sigma_prior_sd
+)
+data_list_4a <- list(
+  N = N4a, P = P4a, X = X4a, y = y4,
+  prior_mean = prior_mean_4a,
+  prior_sd = prior_sd_4a,
+  sigma_prior_sd = sigma_prior_sd
+)
+data_list_4b <- list(
+  N = N4b, P = P4b, X = X4b, y = y4,
+  prior_mean = prior_mean_4b,
+  prior_sd = prior_sd_4b,
+  sigma_prior_sd = sigma_prior_sd
+)
+```
+
+Fit model
+```{r}
+fit_vload <- mod$sample(data = data_list_1a, chains = 4, iter_warmup = 2000, iter_sampling = 5000, seed = 123)
+fit_vload_adh <- mod$sample(data = data_list_1b, chains = 4, iter_warmup = 2000, iter_sampling = 5000, seed = 123)
+fit_cd4 <- mod$sample(data = data_list_2a, chains = 4, iter_warmup = 2000, iter_sampling = 5000, seed = 123)
+fit_cd4_adh <- mod$sample(data = data_list_2b, chains = 4, iter_warmup = 2000, iter_sampling = 5000, seed = 123)
+fit_phys <- mod$sample(data = data_list_3a, chains = 4, iter_warmup = 2000, iter_sampling = 5000, seed = 123)
+fit_phys_adh <- mod$sample(data = data_list_3b, chains = 4, iter_warmup = 2000, iter_sampling = 5000, seed = 123)
+fit_ment <- mod$sample(data = data_list_4a, chains = 4, iter_warmup = 2000, iter_sampling = 5000, seed = 123)
+fit_ment_adh <- mod$sample(data = data_list_4b, chains = 4, iter_warmup = 2000, iter_sampling = 5000, seed = 123)
+```
+
+```{r}
+fit_vload
+fit_vload_adh
+```
+```{r}
+fit_cd4
+fit_cd4_adh
+```
+```{r}
+fit_phys
+fit_phys_adh
+```
+```{r}
+fit_ment
+fit_ment_adh
 ```
 
