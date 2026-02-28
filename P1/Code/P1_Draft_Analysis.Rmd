@@ -11,6 +11,11 @@ library(tidyr)
 library(purrr)
 library(ggplot2)
 library(table1)
+library(cmdstanr)
+library(posterior)
+library(tidybayes)
+library(tibble)
+library(mcmcse)
 dat_raw <- read.csv(here::here("P1/DataRaw", "hiv_6624_final.csv"))
 ```
 
@@ -146,6 +151,40 @@ summary(mod_phys_adh)
 ```{r}
 summary(mod_ment)
 summary(mod_ment_adh)
+```
+Summary table
+```{r}
+summarise_lm_beta2 <- function(mod) {
+  
+  sm <- summary(mod)
+  coefs <- sm$coefficients
+  
+  est <- coefs["hard_drugs_0Yes", "Estimate"]
+  se  <- coefs["hard_drugs_0Yes", "Std. Error"]
+  p   <- coefs["hard_drugs_0Yes", "Pr(>|t|)"]
+  
+  ci_low  <- est - 1.96 * se
+  ci_high <- est + 1.96 * se
+  
+  tibble(
+    Parameter = "hard_drugs_0Yes",
+    Estimate = est,
+    CI_2.5 = ci_low,
+    CI_97.5 = ci_high,
+    p_value = p
+  )
+}
+mod_list <- list(
+  mod_vload_adh,
+  mod_vload,
+  mod_cd4,
+  mod_cd4_adh,
+  mod_phys,
+  mod_phys_adh,
+  mod_ment,
+  mod_ment_adh
+)
+purrr::map_df(mod_list, summarise_lm_beta2)
 ```
 
 
@@ -366,12 +405,6 @@ fit_ment_adh
 
 
 ```{r}
-library(cmdstanr)
-library(posterior)
-library(tidybayes)
-library(tibble)
-library(mcmcse)
-
 summarise_beta2 <- function(fit, threshold) {
   
   draws <- fit$draws()
@@ -383,7 +416,6 @@ summarise_beta2 <- function(fit, threshold) {
     # HPDI
   
   tibble(
-    Model = deparse(substitute(fit)),
     Parameter = "beta[2]",
     Estimate = mean(vals),
     HPDI_2.5 = hpd[1],
