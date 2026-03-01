@@ -541,7 +541,7 @@ tab_comb
 # Adherence table
 
 ```{r}
-tab_comb <- dplyr::left_join(tab_freq_adh, tab_bayes_adh, by = "Outcome") %>%
+tab_adh <- dplyr::left_join(tab_freq_adh, tab_bayes_adh, by = "Outcome") %>%
   filter(!grepl("_adh$", Outcome)) %>%
   gt() %>%
   tab_spanner(
@@ -562,7 +562,7 @@ tab_comb <- dplyr::left_join(tab_freq_adh, tab_bayes_adh, by = "Outcome") %>%
   tab_footnote(
     footnote = "Frequentist and Bayesian regression estimates for the association between baseline hard drug use and year‑2 outcomes after adjusting for adherence. All models also adjust for baseline outcome values, age, BMI, smoking status, education, and race. Percent change reflects the relative difference between adherence‑adjusted and non‑adjusted models, calculated for both the frequentist point estimate and the Bayesian posterior mean. Bayesian models use weakly informative Normal(0, 1000) priors for regression coefficients and half‑Normal(0, 1000) priors for residual SD." 
   )
-tab_comb
+tab_adh
 ```
 
 # Figure
@@ -643,25 +643,19 @@ bayes_est_adh <- purrr::map2_df(model_list, thresholds, summarise_beta2, .id = "
   )
 
 #est_df <- bind_rows(freq_est, bayes_est)
-est_df_all <- bind_rows(
+dat_est <- bind_rows(
   freq_est,
   bayes_est,
   freq_est_adh,
   bayes_est_adh
-)
-dat_est %>%
+) %>%
   left_join(
     dat_plot %>% group_by(Outcome, hard_drugs_0) %>% summarize(mean_val = mean(Value)),
     by = "Outcome"
+  ) %>%
+  mutate(
+    est_y = mean_val + Estimate
   )
-
-# dat_est <- dat_plot %>%
-#   group_by(Outcome, hard_drugs_0) %>%
-#   summarize(mean_val = mean(Value), .groups = "drop") %>%
-#   left_join(est_df, by = "Outcome") %>%
-#   mutate(
-#     est_y = mean_val + Estimate
-#   )
 ggplot() +
   # Raw data points
   geom_point(
@@ -714,5 +708,243 @@ ggplot() +
     plot.margin = margin(10, 10, 40, 10)
   )
 
+```
+
+```{r}
+dat_plot <- dat_wide %>%
+  select(
+    hard_drugs_0,
+    log10VLOAD_2,
+    LEU3N_2,
+    AGG_PHYS_2,
+    AGG_MENT_2
+  ) %>%
+  pivot_longer(
+    cols = -hard_drugs_0,
+    names_to = "Outcome",
+    values_to = "Value"
+  ) %>%
+  mutate(
+    hard_drugs_0 = factor(hard_drugs_0, labels = c("No Hard Drugs", "Hard Drugs")),
+    Outcome = recode(
+      Outcome,
+      log10VLOAD_2 = "Viral Load (log10 HIV copies/mL blood)",
+      LEU3N_2      = "CD4+ T Cell Count",
+      AGG_PHYS_2   = "Physical Quality of Life (SF-36 Aggregate)",
+      AGG_MENT_2   = "Mental Quality of Life (SF-36 Aggregate)"
+    )
+  )
+
+ggplot(dat_plot, aes(x = hard_drugs_0, y = Value)) +
+  geom_violin(fill = "gray85", color = "gray60") +
+  geom_jitter(alpha = 0.25, width = 0.15, color = "gray40") +
+  facet_wrap(~ Outcome, scales = "free_y") +
+  labs(
+    x = "Hard Drug Use at Baseline",
+    y = "Outcome Value",
+    title = "Observed Year‑2 Outcomes by Baseline Hard Drug Use"
+  ) +
+  theme_bw() +
+  theme(
+    strip.text = element_text(size = 11),
+    legend.position = "none"
+  )
+```
+
+```{r}
+# Prepare data for forest plot
+forest_df <- purrr::map_df(mod_list, summarise_lm_beta2, .id = "Model") %>%
+  transmute(
+    Outcome = Model,
+    Method = "Frequentist",
+    Estimate = PE,
+    lower = CI_2.5,
+    upper = CI_97.5
+  ) %>%
+  bind_rows(
+    purrr::map2_df(model_list, thresholds, summarise_beta2, .id = "Model") %>%
+      transmute(
+        Outcome = Model,
+        Method = "Bayesian",
+        Estimate = PM,
+        lower = HPDI_2.5,
+        upper = HPDI_97.5
+      )
+  ) %>%
+  mutate(
+    Outcome = recode(
+      Outcome,
+      log10VLOAD_2 = "Viral Load (log10 HIV copies/mL blood)",
+      LEU3N_2      = "CD4+ T Cell Count",
+      AGG_PHYS_2   = "Physical Quality of Life (SF-36 Aggregate)",
+      AGG_MENT_2   = "Mental Quality of Life (SF-36 Aggregate)"
+    )
+  ) %>%
+  mutate(
+    cm_diff = case_when(
+      Outcome == "Viral Load (log10 HIV copies/mL blood)" ~ 0.5,
+      Outcome == "CD4+ T Cell Count" ~ 50,
+      Outcome == "Physical Quality of Life (SF-36 Aggregate)" ~ 2,
+      Outcome == "Mental Quality of Life (SF-36 Aggregate)" ~ 2
+    )
+  )
+
+ggplot(forest_df, aes(x = Estimate, y = Method, color = Method)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(xmin = lower, xmax = upper), width = 0.2) +
+  facet_wrap(~ Outcome, scales = "free_x") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(
+    x = "Adjusted Effect of Baseline Hard Drug Use",
+    y = "",
+    title = "Adjusted Associations Between Baseline Hard Drug Use and Year‑2 Outcomes"
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "bottom",
+    strip.text = element_text(size = 11)
+  ) + 
+  geom_rect(
+    aes(
+      xmin = -cm_diff, xmax = cm_diff,
+      ymin = -Inf, ymax = Inf
+    ),
+    fill = "grey90", alpha = 0.3,
+    inherit.aes = FALSE
+  )
+```
+
+```{r}
+# ---- Prepare data for forest plot with adherence adjustment ----
+
+forest_df <-
+  # Frequentist unadjusted
+  purrr::map_df(mod_list, summarise_lm_beta2, .id = "Model") %>%
+  mutate(
+    Adjustment = ifelse(grepl("_adh$", Model), "Adherence-adjusted", "Unadjusted"),
+    Outcome = sub("_adh$", "", Model),
+    Method = "Frequentist"
+  ) %>%
+  transmute(
+    Outcome,
+    Method,
+    Adjustment,
+    Estimate = PE,
+    lower = CI_2.5,
+    upper = CI_97.5
+  ) %>%
+  
+  # Add Bayesian
+  bind_rows(
+    purrr::map2_df(model_list, thresholds, summarise_beta2, .id = "Model") %>%
+      mutate(
+        Adjustment = ifelse(grepl("_adh$", Model), "Adherence-adjusted", "Unadjusted"),
+        Outcome = sub("_adh$", "", Model),
+        Method = "Bayesian"
+      ) %>%
+      transmute(
+        Outcome,
+        Method,
+        Adjustment,
+        Estimate = PM,
+        lower = HPDI_2.5,
+        upper = HPDI_97.5
+      )
+  ) %>%
+  
+  # Recode outcome names + add clinically meaningful thresholds
+  mutate(
+    Outcome = recode(
+      Outcome,
+      log10VLOAD_2 = "Viral Load (log10 HIV copies/mL blood)",
+      LEU3N_2      = "CD4+ T Cell Count",
+      AGG_PHYS_2   = "Physical Quality of Life (SF-36 Aggregate)",
+      AGG_MENT_2   = "Mental Quality of Life (SF-36 Aggregate)"
+    ),
+    cm_diff = case_when(
+      Outcome == "Viral Load (log10 HIV copies/mL blood)" ~ 0.5,
+      Outcome == "CD4+ T Cell Count" ~ 50,
+      Outcome == "Physical Quality of Life (SF-36 Aggregate)" ~ 2,
+      Outcome == "Mental Quality of Life (SF-36 Aggregate)" ~ 2
+    ),
+    # ---- Set facet order here ----
+    Outcome = factor(
+      Outcome,
+      levels = c(
+        "Viral Load (log10 HIV copies/mL blood)",
+        "CD4+ T Cell Count",
+        "Physical Quality of Life (SF-36 Aggregate)",
+        "Mental Quality of Life (SF-36 Aggregate)"
+      )
+    )
+  )
+
+# ---- Plot ----
+
+p <- ggplot(forest_df, aes(x = Estimate, y = Method, color = Method, shape = Adjustment)) +
+  
+  geom_rect(
+    aes(
+      xmin = -cm_diff, xmax = cm_diff,
+      ymin = -Inf, ymax = Inf
+    ),
+    fill = "grey90", alpha = 0.3,
+    inherit.aes = FALSE
+  ) +
+  
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  
+  geom_point(size = 3, position = position_dodge(width = 0.5)) +
+  
+  geom_errorbar(
+    aes(xmin = lower, xmax = upper),
+    width = 0.2,
+    position = position_dodge(width = 0.5)
+  ) +
+  
+  facet_wrap(~ Outcome, scales = "free_x") +
+  
+  scale_shape_manual(values = c(
+    "Unadjusted" = 16,
+    "Adherence-adjusted" = 17
+  )) +
+  
+  labs(
+    x = "Adjusted Effect of Baseline Hard Drug Use",
+    y = "",
+    title = "Adjusted Associations Between Baseline Hard Drug Use and 2nd Year Outcomes",
+    color = "Model Type",
+    shape = "Adjustment",
+  ) +
+  
+  theme_bw() +
+  theme(
+    legend.position = "bottom",
+    strip.text = element_text(size = 11),
+  )
+
+library(cowplot)
+
+caption_text <- "Adjusted associations between baseline hard drug use and 2nd year clinical outcomes estimated using Frequentist and Bayesian regression models, shown separately for models with and without adherence. All models adjust for baseline outcome values, age, BMI, smoking status, education, and race. Bayesian models use weakly informative Normal(0, 1000) priors for regression coefficients and half‑Normal(0, 1000) priors for residual standard deviations. Points represent the estimated effect of baseline hard drug use, with error bars showing 95% confidence intervals (Frequentist) or 95% highest posterior density intervals (Bayesian). The grey shaded region in each panel denotes the range corresponding to the two-sided clinically meaningful difference for that outcome (0.5 log10 for viral load, 50 cells for CD4 count, and 2 points for quality of life scales), providing a visual benchmark for interpreting the magnitude of estimated effects."
+
+library(ggtext)
+library(patchwork)
+
+caption_panel <- ggplot() +
+  annotate(
+    "richtext",
+    x = 0, y = 1,
+    label = caption_text,
+    hjust = 0,
+    vjust = 1,
+    size = 3,
+    width = unit(0.95, "npc")
+  ) +
+  theme_void()
+
+p / caption_panel + plot_layout(heights = c(1, 0.25))
+```
+```{r fig.cap="Adjusted associations between baseline hard drug use and 2nd year clinical outcomes estimated using Frequentist and Bayesian regression models, shown separately for models with and without adherence. All models adjust for baseline outcome values, age, BMI, smoking status, education, and race. Bayesian models use weakly informative Normal(0, 1000) priors for regression coefficients and half‑Normal(0, 1000) priors for residual standard deviations. Points represent the estimated effect of baseline hard drug use, with error bars showing 95% confidence intervals (Frequentist) or 95% highest posterior density intervals (Bayesian). The grey shaded region in each panel denotes the range corresponding to the two-sided clinically meaningful difference for that outcome (0.5 log10 for viral load, 50 cells for CD4 count, and 2 points for quality of life scales), providing a visual benchmark for interpreting the magnitude of estimated effects."}
+p
 ```
 
