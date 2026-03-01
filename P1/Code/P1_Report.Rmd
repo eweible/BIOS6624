@@ -1,0 +1,53 @@
+---
+output:
+  bookdown::pdf_document2:
+    toc: false
+    number_sections: false
+documentclass: article
+geometry: margin=1in
+fontsize: 12pt
+linestretch: 2
+fig.cap: true
+header-includes:
+  - \usepackage{float}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(ggplot2)
+library(table1)
+dat_raw <- read.csv(here::here("P1/DataRaw", "hiv_6624_final.csv"))
+```
+
+<!-- Title here: -->
+# \textit{Analysis Plan for HAART Outcomes by Drug Use}
+
+<!-- Name here: -->
+Ezra Weible[^1]
+
+[^1]: Biostatistics Masters Student, Colorado School of Public Health, CU Anschutz Medical Campus
+
+## Introduction
+
+This project is a secondary analysis of data from the Multicenter AIDS Cohort Study, an ongoing prospective cohort that studies HIV-1 infection in homosexual and bisexual men in four major US cities. This analysis uses a subset of 476 MACS participants with viral load, CD4 count, and quality‑of‑life measures at baseline (pre‑HAART initiation) and two years post‑HAART initiation. Hard drug use at baseline, defined as injection drugs or illicit heroin/opiate use, and other relevant covariates (age, BMI, smoking status, education, and race/ethnicity) are included (*Table 1*). 
+
+The primary question of interest is whether treatment response two years after starting HAART differs between individuals who did and did not report hard drug usage at baseline (*Table 2*). Both clinical and quality of life outcomes will be assessed to identify the success of HAART. Statistically, after adjusting for baseline outcome and covariates, we will be testing if there is a difference in year 2 treatment response between those who used hard drugs at baseline and those who did not.
+
+## Preliminary Methods
+
+This analysis will be done in R v4.5.2 (2025-10-31 ucrt). Analyses will use 476 subjects with reported baseline hard drug use and complete measurements of viral load, CD4 count, and physical and mental quality of life scores at baseline and year 2. BMI values coded as -1 or 999 and two implausible values will be set to missing. Categorical covariates will be collapsed as follows to ensure adequate sample sizes by category: smoking status (current vs former/non smoker), education status (no college degree vs college degree and above), race/ethnicity (white non-Hispanic vs other). Viral load will be reported on the log10 scale (*Figure 1*). Complete case analysis will be used for each outcome and patterns of missingness will be summarized by baseline hard drug use. 
+  
+For each outcome at year 2, linear regression will be used to identify the association with hard drug use at baseline, adjusting for age, BMI, smoking status, education, and race/ethnicity. Adherence to HAART will also be investigated as a potential mediator by comparing models with and without year 2 adherence as a covariate. 
+
+Coefficients, unadjusted p-values and 95\% confidence intervals will be reported for frequentist models, acknowledging that multiple outcomes were modeled. Baysian models will implement the same regression structure using STAN. Vaguely informative priors will be used as prior knowledge is limited: N(0,1000) for regression coefficients and half-normal for residual SD. The intercept will not be centered, which should not strongly influence results as the 1000 variance is large. R-hat, ESS, and LOO-CV  will be used as diagnostics. Clinically meaningful differences for each outcome (two-sided) are as follows: 0.5 log10 (viral load), 50 cells (CD4), and 2 points (quality of life).
+
+## Appendix
+
+Code Directory: https://github.com/eweible/BIOS6624.git
+
+File name: P1/Code/P1_Data_Analysis_Plan.Rmd
+
+Data Directory: C:/Users/weiblee/OneDrive/Documents/Anschutz/Spring 2026/6624_Advanced/Weible_Advanced/P1/DataRaw
