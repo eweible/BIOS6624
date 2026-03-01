@@ -16,6 +16,7 @@ library(posterior)
 library(tidybayes)
 library(tibble)
 library(mcmcse)
+library(gt)
 dat_raw <- read.csv(here::here("P1/DataRaw", "hiv_6624_final.csv"))
 ```
 
@@ -89,17 +90,18 @@ table1a <- table1(~ log10VLOAD_0 + LEU3N_0 + AGG_PHYS_0 + AGG_MENT_0 + age_0 + B
 table1b <- table1(~ log10VLOAD_2 + LEU3N_2 + AGG_PHYS_2 + AGG_MENT_2 + adh_group_2 | hard_drugs_0, dat_wide, caption="Year 2 Characteristics by Baseline Hard Drug Use")
 ```
 
-TODO: analysis steps
+# TODO: analysis steps
+
 - collapse ADH to upper 2 and lower 2 groups (>95% and <95%)
 - reduce to 463 individuals with complete covariate data
 - use dplyr to transform dat_sub so that you have y2 log10VLOAD/other outcomes and baseline hard drug use/covariates/y2 adherence all available in one single row
 - model with simple linear regression with separate models for all 4 outcomes
-------------------------------------------------------------------------------
   - store coefficients, unadjusted pvals, 95% CIs
   - model with adherence and store % change in outcome (are there differences in adherence/relationship?)
 - get STAN to run and model with bayesian linear regression with N(0,1000) for regression coefficients and HN(0,1000) for error. 
   - store posterior mean, HDPI, posterior probability (use clinically meaningful differences)
   - model with adherence and store % change in outcome
+------------------------------------------------------------------------------
 - Make table of outcomes that combines frequentist and bayesian outcomes previously stored (table 3)
 - Consider what figures or any additional tables that you want to include
   - perhaps separate table of adherence % changes to table 3
@@ -168,23 +170,29 @@ summarise_lm_beta2 <- function(mod) {
   
   tibble(
     Parameter = "hard_drugs_0Yes",
-    Estimate = est,
+    PE = est,
     CI_2.5 = ci_low,
     CI_97.5 = ci_high,
     p_value = p
   )
 }
 mod_list <- list(
-  mod_vload_adh,
-  mod_vload,
-  mod_cd4,
-  mod_cd4_adh,
-  mod_phys,
-  mod_phys_adh,
-  mod_ment,
-  mod_ment_adh
+  `Viral Load (log10 HIV copies/mL blood)` = mod_vload,
+  vload_adh = mod_vload_adh,
+  `CD4+ T Cell Count` = mod_cd4,
+  cd4_adh = mod_cd4_adh,
+  `Physical Quality of Life (SF-36 Aggregate)` = mod_phys,
+  phys_adh = mod_phys_adh,
+  `Mental Quality of Life (SF-36 Aggregate` = mod_ment,
+  ment_adh = mod_ment_adh
 )
-purrr::map_df(mod_list, summarise_lm_beta2)
+tab_freq <- purrr::map_df(mod_list, summarise_lm_beta2, .id = "Model") %>%
+  mutate(
+    CI = sprintf("(%0.3f, %0.3f)", CI_2.5, CI_97.5)
+      # Combine CIs and limit to 3 decimal places
+  ) %>%
+  select(Outcome = Model, `Point Estimate` = PE, `95% CI` = CI, `Unadjusted P-Value` = p_value)
+tab_freq
 ```
 
 
@@ -417,26 +425,59 @@ summarise_beta2 <- function(fit, threshold) {
   
   tibble(
     Parameter = "beta[2]",
-    Estimate = mean(vals),
+    PM = mean(vals),
     HPDI_2.5 = hpd[1],
     HPDI_97.5 = hpd[2],
-    Prob_clin_meaningful = mean(abs(vals) > threshold)
+    PP = mean(abs(vals) > threshold)
   )
 }
 
 model_list <- list(
-  fit_vload_adh,
-  fit_vload,
-  fit_cd4,
-  fit_cd4_adh,
-  fit_phys,
-  fit_phys_adh,
-  fit_ment,
-  fit_ment_adh
+  `Viral Load (log10 HIV copies/mL blood)` = fit_vload,
+  vload_adh = fit_vload_adh,
+  `CD4+ T Cell Count` = fit_cd4,
+  cd4_adh = fit_cd4_adh,
+  `Physical Quality of Life (SF-36 Aggregate)` = fit_phys,
+  phys_adh = fit_phys_adh,
+  `Mental Quality of Life (SF-36 Aggregate` = fit_ment,
+  ment_adh = fit_ment_adh
 )
+
 thresholds <- c(0.5, 0.5, 50, 50, 2, 2, 2, 2)
   # Clinically meaningful thresholds
-purrr::map2_df(model_list, thresholds, summarise_beta2)
+tab_bayes <- purrr::map2_df(model_list, thresholds, summarise_beta2, .id = "Model") %>%
+  mutate(
+    HPDI = sprintf("(%0.3f, %0.3f)", HPDI_2.5, HPDI_97.5)
+      # Combine HDPIs and limit to 3 decimal places
+  ) %>%
+  select(Outcome = Model, `Posterior Mean` = PM, `95% HPDI` = HPDI, `Posterior Probability` = PP)
+tab_bayes
 ```
 
+# Combined table
+
+```{r}
+tab_comb <- dplyr::left_join(tab_freq, tab_bayes, by = "Outcome") %>%
+  filter(!grepl("_adh$", Outcome)) %>%
+  gt() %>%
+  tab_spanner(
+    label = "Frequentist",
+    columns = c(`Point Estimate`, `95% CI`, `Unadjusted P-Value`)
+  ) %>%
+  tab_spanner(
+    label = "Bayesian",
+    columns = c(`Posterior Mean`, `95% HPDI`, `Posterior Probability`)
+  ) %>%
+  fmt_number(
+    columns = c(`Point Estimate`, `Unadjusted P-Value`, `Posterior Mean`, `Posterior Probability`),
+    decimals = 3
+  ) %>%
+  tab_header(
+    title = "Comparison of Frequentist and Bayesian Estimates for Associations Between Hard Drug Use and Clinical Outcomes"
+  ) %>%
+  tab_footnote(
+    footnote = "Comparison of Frequentist and Bayesian regression estimates for the association between baseline hard drug use and year‑2 outcomes. All models adjust for baseline outcome values, age, BMI, smoking status, education, and race. Bayesian models use weakly informative Normal(0, 1000) priors for regression coefficients and half‑Normal(0, 1000) priors for residual SD." 
+  )
+tab_comb
+```
 
