@@ -101,8 +101,8 @@ table1b <- table1(~ log10VLOAD_2 + LEU3N_2 + AGG_PHYS_2 + AGG_MENT_2 + adh_group
 - get STAN to run and model with bayesian linear regression with N(0,1000) for regression coefficients and HN(0,1000) for error. 
   - store posterior mean, HDPI, posterior probability (use clinically meaningful differences)
   - model with adherence and store % change in outcome
-------------------------------------------------------------------------------
 - Make table of outcomes that combines frequentist and bayesian outcomes previously stored (table 3)
+------------------------------------------------------------------------------
 - Consider what figures or any additional tables that you want to include
   - perhaps separate table of adherence % changes to table 3
   - perhaps some figure to visualize significant outcomes by hard drug status/somehow visualize the models (think boxplot of each outcome with 2 for each color coded by hard drug use, each outcome as a panel)
@@ -178,13 +178,13 @@ summarise_lm_beta2 <- function(mod) {
 }
 mod_list <- list(
   `Viral Load (log10 HIV copies/mL blood)` = mod_vload,
-  vload_adh = mod_vload_adh,
+  `Viral Load (log10 HIV copies/mL blood)_adh` = mod_vload_adh,
   `CD4+ T Cell Count` = mod_cd4,
-  cd4_adh = mod_cd4_adh,
+  `CD4+ T Cell Count_adh` = mod_cd4_adh,
   `Physical Quality of Life (SF-36 Aggregate)` = mod_phys,
-  phys_adh = mod_phys_adh,
+  `Physical Quality of Life (SF-36 Aggregate)_adh` = mod_phys_adh,
   `Mental Quality of Life (SF-36 Aggregate` = mod_ment,
-  ment_adh = mod_ment_adh
+  `Mental Quality of Life (SF-36 Aggregate_adh` = mod_ment_adh
 )
 tab_freq <- purrr::map_df(mod_list, summarise_lm_beta2, .id = "Model") %>%
   mutate(
@@ -195,6 +195,34 @@ tab_freq <- purrr::map_df(mod_list, summarise_lm_beta2, .id = "Model") %>%
 tab_freq
 ```
 
+```{r}
+tab_freq_adh <- purrr::map_df(mod_list, summarise_lm_beta2, .id = "Model") %>%
+  mutate(
+    Outcome = sub("_adh$", "", Model),
+    adh = grepl("_adh$", Model),
+    CI = sprintf("(%0.3f, %0.3f)", CI_2.5, CI_97.5)
+  ) %>%
+  select(Outcome, adh, PE, CI, p_value) %>%
+  pivot_wider(
+    names_from = adh,
+    values_from = c(PE, CI, p_value),
+    names_prefix = "",
+    names_sep = "_"
+  ) %>%
+  rename(
+    PE = PE_FALSE, 
+    PE_adh = PE_TRUE, 
+    CI = CI_FALSE, 
+    CI_adh = CI_TRUE, 
+    p_value = p_value_FALSE, 
+    p_value_adh = p_value_TRUE
+  )  %>%
+  mutate(
+    Percent_Change = 100 * (PE_adh - PE) / abs(PE)
+  ) %>%
+  select(Outcome, `Point Estimate` = PE_adh, `Change in PE (%)` = Percent_Change, `95% CI` = CI_adh, `Unadjusted P-Value` = p_value_adh)
+tab_freq_adh
+```
 
 # Bayesian analysis
 
@@ -434,13 +462,13 @@ summarise_beta2 <- function(fit, threshold) {
 
 model_list <- list(
   `Viral Load (log10 HIV copies/mL blood)` = fit_vload,
-  vload_adh = fit_vload_adh,
+  `Viral Load (log10 HIV copies/mL blood)_adh` = fit_vload_adh,
   `CD4+ T Cell Count` = fit_cd4,
-  cd4_adh = fit_cd4_adh,
+  `CD4+ T Cell Count_adh` = fit_cd4_adh,
   `Physical Quality of Life (SF-36 Aggregate)` = fit_phys,
-  phys_adh = fit_phys_adh,
+  `Physical Quality of Life (SF-36 Aggregate)_adh` = fit_phys_adh,
   `Mental Quality of Life (SF-36 Aggregate` = fit_ment,
-  ment_adh = fit_ment_adh
+  `Mental Quality of Life (SF-36 Aggregate_adh` = fit_ment_adh
 )
 
 thresholds <- c(0.5, 0.5, 50, 50, 2, 2, 2, 2)
@@ -453,6 +481,34 @@ tab_bayes <- purrr::map2_df(model_list, thresholds, summarise_beta2, .id = "Mode
   select(Outcome = Model, `Posterior Mean` = PM, `95% HPDI` = HPDI, `Posterior Probability` = PP)
 tab_bayes
 ```
+```{r}
+tab_bayes_adh <- purrr::map2_df(model_list, thresholds, summarise_beta2, .id = "Model") %>%
+  mutate(
+    Outcome = sub("_adh$", "", Model),
+    adh     = grepl("_adh$", Model),
+    HPDI    = sprintf("(%0.3f, %0.3f)", HPDI_2.5, HPDI_97.5)
+  ) %>%
+  select(Outcome, adh, PM, HPDI, PP) %>%
+  pivot_wider(
+    names_from  = adh,
+    values_from = c(PM, HPDI, PP)
+  ) %>%
+  rename(
+    PM        = PM_FALSE,
+    PM_adh    = PM_TRUE,
+    HPDI      = HPDI_FALSE,
+    HPDI_adh  = HPDI_TRUE,
+    PP        = PP_FALSE,
+    PP_adh    = PP_TRUE
+  ) %>%
+  mutate(
+    Percent_Change = 100 * (PM_adh - PM) / abs(PM)
+  ) %>%
+  select(Outcome, `Posterior Mean` = PM_adh, `Change in PM (%)` = Percent_Change, `95% HPDI` = HPDI_adh, `Posterior Probability` = PP_adh)
+
+tab_bayes_adh
+```
+
 
 # Combined table
 
@@ -477,6 +533,33 @@ tab_comb <- dplyr::left_join(tab_freq, tab_bayes, by = "Outcome") %>%
   ) %>%
   tab_footnote(
     footnote = "Comparison of Frequentist and Bayesian regression estimates for the association between baseline hard drug use and year‑2 outcomes. All models adjust for baseline outcome values, age, BMI, smoking status, education, and race. Bayesian models use weakly informative Normal(0, 1000) priors for regression coefficients and half‑Normal(0, 1000) priors for residual SD." 
+  )
+tab_comb
+```
+
+# Adherence table
+
+```{r}
+tab_comb <- dplyr::left_join(tab_freq_adh, tab_bayes_adh, by = "Outcome") %>%
+  filter(!grepl("_adh$", Outcome)) %>%
+  gt() %>%
+  tab_spanner(
+    label = "Frequentist",
+    columns = c(`Point Estimate`, `Change in PE (%)`, `95% CI`, `Unadjusted P-Value`)
+  ) %>%
+  tab_spanner(
+    label = "Bayesian",
+    columns = c(`Posterior Mean`, `Change in PM (%)`, `95% HPDI`, `Posterior Probability`)
+  ) %>%
+  fmt_number(
+    columns = c(`Point Estimate`, `Change in PE (%)`, `Unadjusted P-Value`, `Posterior Mean`, `Change in PM (%)`, `Posterior Probability`),
+    decimals = 3
+  ) %>%
+  tab_header(
+    title = "Impact of Adherence Adjustment on Frequentist and Bayesian Estimates for Associations Between Hard Drug Use and Clinical Outcomes"
+  ) %>%
+  tab_footnote(
+    footnote = "Frequentist and Bayesian regression estimates for the association between baseline hard drug use and year‑2 outcomes after adjusting for adherence. All models also adjust for baseline outcome values, age, BMI, smoking status, education, and race. Percent change reflects the relative difference between adherence‑adjusted and non‑adjusted models, calculated for both the frequentist point estimate and the Bayesian posterior mean. Bayesian models use weakly informative Normal(0, 1000) priors for regression coefficients and half‑Normal(0, 1000) priors for residual SD." 
   )
 tab_comb
 ```
