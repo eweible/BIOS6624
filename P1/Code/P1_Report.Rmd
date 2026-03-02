@@ -16,9 +16,16 @@ header-includes:
 knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
 library(tidyr)
+library(tidyverse)
 library(purrr)
 library(ggplot2)
 library(table1)
+library(cmdstanr)
+library(posterior)
+library(tidybayes)
+library(tibble)
+library(mcmcse)
+library(gt)
 dat_raw <- read.csv(here::here("P1/DataRaw", "hiv_6624_final.csv"))
 ```
 
@@ -29,6 +36,193 @@ dat_raw <- read.csv(here::here("P1/DataRaw", "hiv_6624_final.csv"))
 Ezra Weible[^1]
 
 [^1]: Biostatistics Masters Student, Colorado School of Public Health, CU Anschutz Medical Campus
+
+```{r data_management, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+dat_sub <- dat_raw %>%
+  filter(
+    years %in% c(0, 2)
+  ) %>%
+    # Filter to baseline and year 2
+  mutate(
+    race_group = case_when(
+      RACE == 1 ~ "White nonHisp",
+      RACE %in% 2:8 ~ "Other",
+      TRUE ~ NA_character_
+    ), # Collapse race
+    educ_group = case_when(
+      EDUCBAS %in% 1:4 ~ "No College Degree",
+      EDUCBAS %in% 5:7 ~ "College Degree and above",
+      TRUE ~ NA_character_
+    ), # Collapse education
+    smoke_group = case_when(
+      SMOKE %in% c(1, 2) ~ "Non or Former Smoker",
+      SMOKE == 3 ~ "Current Smoker",
+      TRUE ~ NA_character_
+    ), # Collapse smoking status
+    adh_group = case_when(
+      ADH %in% c(1, 2) ~ "95% and Above",
+      ADH %in% c(3, 4) ~ "<95%",
+      TRUE ~ NA_character_
+    ), # Collapse adherence 
+    hard_drugs = case_when(
+      hard_drugs == 0 ~ "No",
+      hard_drugs == 1 ~ "Yes",
+      TRUE ~ NA_character_
+    ),
+      # Add labels to hard drugs
+    BMI = if_else(
+      BMI < 0 | BMI > 250, NA_real_, BMI
+    ), # Exclude implausible BMI values
+    log10VLOAD = log10(VLOAD)
+      # Convert VLOAD to log10 scale
+  )
+
+dat_wide <- dat_sub %>%
+  pivot_wider(
+    id_cols = newid,
+    names_from = years,
+    values_from = c(
+      log10VLOAD, LEU3N, AGG_PHYS, AGG_MENT,
+      age, BMI, smoke_group, educ_group, race_group,
+      hard_drugs, adh_group
+    ),
+    names_glue = "{.value}_{years}"
+  ) # Pivot to wide
+
+required_outcomes <- c("log10VLOAD_0", "log10VLOAD_2", "LEU3N_0", "LEU3N_2",
+                       "AGG_PHYS_0", "AGG_PHYS_2", "AGG_MENT_0", "AGG_MENT_2")
+  # Store required outcomes
+required_predictors <- c("age_0", "BMI_0", "smoke_group_0", "educ_group_0",
+                         "race_group_0", "hard_drugs_0", "adh_group_2")
+  # Store required predictors
+
+dat_wide <- dat_wide %>%
+  filter(
+    complete.cases(across(c(required_outcomes, required_predictors)))
+  ) %>% # Filter to those without missing outcomes or predictors
+  select(
+    newid, all_of(required_outcomes), all_of(required_predictors)
+  ) # Only select relevant columns
+      # 463 final sample size
+
+table1 <- table1(~ log10VLOAD_0 + LEU3N_0 + AGG_PHYS_0 + AGG_MENT_0 + age_0 + BMI_0 + smoke_group_0 + educ_group_0 + race_group_0 | hard_drugs_0, dat_wide, caption="Baseline Characteristics by Baseline Hard Drug Use")
+  # Generate table 1 (baseline)
+table2 <- table1(~ log10VLOAD_2 + LEU3N_2 + AGG_PHYS_2 + AGG_MENT_2 + adh_group_2 | hard_drugs_0, dat_wide, caption="Year 2 Characteristics by Baseline Hard Drug Use")
+  # Generate table 2 (year 2)
+```
+
+```{r frequentist, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+## Frequentist models
+mod_vload <- lm(log10VLOAD_2 ~ hard_drugs_0 + log10VLOAD_0 + age_0 + BMI_0 +
+                  smoke_group_0 + educ_group_0 + race_group_0, data = dat_wide)
+mod_cd4 <- lm(LEU3N_2 ~ hard_drugs_0 + LEU3N_0 + age_0 + BMI_0 + smoke_group_0 +
+                educ_group_0 + race_group_0, data = dat_wide)
+mod_phys <- lm(AGG_PHYS_2 ~ hard_drugs_0 + AGG_PHYS_0 + age_0 + BMI_0 +
+                 smoke_group_0 + educ_group_0 + race_group_0, data = dat_wide)
+mod_ment <- lm(AGG_MENT_2 ~ hard_drugs_0 + AGG_MENT_0 + age_0 + BMI_0 +
+                 smoke_group_0 + educ_group_0 + race_group_0, data = dat_wide)
+
+## Frequentist models with adherence
+mod_vload_adh <- lm(log10VLOAD_2 ~ hard_drugs_0 + log10VLOAD_0 + age_0 + BMI_0 +
+                      smoke_group_0 + educ_group_0 + race_group_0 + adh_group_2,
+                    data = dat_wide)
+mod_cd4_adh <- lm(LEU3N_2 ~ hard_drugs_0 + LEU3N_0 + age_0 + BMI_0 + 
+                    smoke_group_0 + educ_group_0 + race_group_0 + adh_group_2,
+                  data = dat_wide)
+mod_phys_adh <- lm(AGG_PHYS_2 ~ hard_drugs_0 + AGG_PHYS_0 + age_0 + BMI_0 +
+                     smoke_group_0 + educ_group_0 + race_group_0 + adh_group_2,
+                   data = dat_wide)
+mod_ment_adh <- lm(AGG_MENT_2 ~ hard_drugs_0 + AGG_MENT_0 + age_0 + BMI_0 +
+                     smoke_group_0 + educ_group_0 + race_group_0 + adh_group_2,
+                   data = dat_wide)
+
+## View model outputs
+summary(mod_vload)
+summary(mod_vload_adh)
+summary(mod_cd4)
+summary(mod_cd4_adh)
+summary(mod_phys)
+summary(mod_phys_adh)
+summary(mod_ment)
+summary(mod_ment_adh)
+```
+```{r freq_tables, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+summarise_lm_beta2 <- function(mod) { # Function to extract frequentist output
+  sm <- summary(mod)
+    # Full model summary
+  coefs <- sm$coefficients
+    # Coefficients table
+  est <- coefs["hard_drugs_0Yes", "Estimate"]
+    # Pull point estimate
+  se  <- coefs["hard_drugs_0Yes", "Std. Error"]
+    # Pull standard error
+  p   <- coefs["hard_drugs_0Yes", "Pr(>|t|)"]
+    # Pull p-value
+  ci_low  <- est - 1.96 * se
+  ci_high <- est + 1.96 * se
+    # Calculate 95% CI
+  
+  tibble(
+    Parameter = "hard_drugs_0Yes",
+    PE = est,
+    CI_2.5 = ci_low,
+    CI_97.5 = ci_high,
+    p_value = p
+  ) # Return results as a tibble
+}
+
+mod_list <- list(
+  `Viral Load (log10 HIV copies/mL blood)` = mod_vload,
+  `Viral Load (log10 HIV copies/mL blood)_adh` = mod_vload_adh,
+  `CD4+ T Cell Count` = mod_cd4,
+  `CD4+ T Cell Count_adh` = mod_cd4_adh,
+  `Physical Quality of Life (SF-36 Aggregate)` = mod_phys,
+  `Physical Quality of Life (SF-36 Aggregate)_adh` = mod_phys_adh,
+  `Mental Quality of Life (SF-36 Aggregate)` = mod_ment,
+  `Mental Quality of Life (SF-36 Aggregate)_adh` = mod_ment_adh
+) # List of models, renamed for tables
+
+tab_freq <- purrr::map_df(mod_list, summarise_lm_beta2, .id = "Model") %>%
+    # Apply function to each model
+  mutate(
+    CI = sprintf("(%0.3f, %0.3f)", CI_2.5, CI_97.5)
+      # Combine CIs and limit to 3 decimal places
+  ) %>%
+  select(Outcome = Model, `Point Estimate` = PE, `95% CI` = CI, `Unadjusted P-Value` = p_value)
+    # Select and rename final columns
+
+tab_freq_adh <- purrr::map_df(mod_list, summarise_lm_beta2, .id = "Model") %>%
+    # Apply function to each model
+  mutate(
+    Outcome = sub("_adh$", "", Model),
+    adh = grepl("_adh$", Model),
+      # Select only results from adherence models
+    CI = sprintf("(%0.3f, %0.3f)", CI_2.5, CI_97.5)
+      # Combine CIs and limit to 3 decimal places
+  ) %>%
+  select(Outcome, adh, PE, CI, p_value) %>%
+    # Select relevant columns
+  pivot_wider(
+    names_from = adh,
+    values_from = c(PE, CI, p_value),
+    names_prefix = "",
+    names_sep = "_"
+  ) %>% # Pivot to wide and add subscript to note adh
+  rename(
+    PE = PE_FALSE, 
+    PE_adh = PE_TRUE, 
+    CI = CI_FALSE, 
+    CI_adh = CI_TRUE, 
+    p_value = p_value_FALSE, 
+    p_value_adh = p_value_TRUE
+  ) %>% # Rename columns 
+  mutate(
+    Percent_Change = 100 * (PE_adh - PE) / abs(PE)
+  ) %>% # Calculate impact of adherence
+  select(Outcome, `Point Estimate` = PE_adh, `Change in PE (%)` = Percent_Change, `95% CI` = CI_adh, `Unadjusted P-Value` = p_value_adh)
+    # Select and rename final columns
+```
+
 
 ## Introduction
 
@@ -42,10 +236,14 @@ All analyses were conducted in R v4.5.2 (2025-10-31 ucrt). BMI values coded as -
 
 For each outcome at year 2, linear regression was used to identify the association with hard drug use at baseline, adjusting for age, BMI, smoking status, education, and race/ethnicity. Frequentist models reported point estimates, 95\% confidence intervals (CI), and unadjusted p-values. Bayesian models were implemented using STAN with vaguely informative priors as prior knowledge is limited: N(0,1000) for regression coefficients and half-normal(0,1000) for residual SD. The intercept was not centered due to the large variance and model fit was diagnosed with R-hat and ESS. Bayesian models reported posterior means, 95% highest posterior density intervals (HPDI), and posterior probabilities. Posterior probabilities were calculated from clinically meaningful differences for each outcome (two-sided), defined as follows: 0.5 log10 (viral load), 50 cells (CD4+ T cell count), and 2 points (quality of life). These models were additionally fit including year 2 adherence and descriptively compared to the original models. 
 
+## Results
+
+
+
 ## Appendix
 
 Code Directory: https://github.com/eweible/BIOS6624.git
 
-File name: P1/Code/P1_Data_Analysis_Plan.Rmd
+File name: P1/Code/P1_Report.Rmd
 
 Data Directory: C:/Users/weiblee/OneDrive/Documents/Anschutz/Spring 2026/6624_Advanced/Weible_Advanced/P1/DataRaw
