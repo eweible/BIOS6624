@@ -42,7 +42,7 @@ Ezra Weible[^1]
 
 [^1]: Biostatistics Masters Student, Colorado School of Public Health, CU Anschutz Medical Campus
 
-```{r data_management, echo=FALSE, message=FALSE, results='hide', warning=FALSE, cache=TRUE}
+```{r data_management, echo=FALSE, message=FALSE, results='hide', warning=FALSE, cache=TRUE, include = FALSE}
 dat_sub <- dat_raw %>%
   filter(
     years %in% c(0, 2)
@@ -501,7 +501,7 @@ fit_phys_adh
 fit_ment
 fit_ment_adh
 ```
-```{r bayes_diagnostics, echo=FALSE, message=FALSE, results='hide', warning=FALSE, cache=TRUE}
+```{r bayes_diagnostics, echo=FALSE, message=FALSE, results='hide', warning=FALSE, cache=TRUE, fig.show='hide', include = FALSE}
 diagnose_model <- function(fit, params, model_name = "model") { # MCMC Diagnostics
   message("\n Diagnostics for: ", model_name)
   
@@ -693,6 +693,15 @@ dat_plot <- dat_wide %>%
       LEU3N_2 = "CD4+ T Cell Count",
       AGG_PHYS_2 = "Physical Quality of Life (SF-36 Aggregate)",
       AGG_MENT_2 = "Mental Quality of Life (SF-36 Aggregate)"
+    ),
+    Outcome = factor(
+      Outcome,
+      levels = c(
+        "Viral Load (log10 HIV copies/mL blood)",
+        "CD4+ T Cell Count",
+        "Physical Quality of Life (SF-36 Aggregate)",
+        "Mental Quality of Life (SF-36 Aggregate)"
+      ) # Order facets
     )
   ) # Rename for figure
 
@@ -823,15 +832,15 @@ The primary question of interest was whether individuals who reported hard drug 
 
 ## Methods
 
-All analyses were conducted in R v4.5.2 (2025-10-31 ucrt). The original dataset provided by the investigator included 715 individuals at baseline. Implausible BMI values (-1, 999, or >250) were set to missing. Categorical covariates were collapsed as follows to ensure adequate sample sizes: smoking status (non or former vs. current), education status (no college degree vs college degree and above), race/ethnicity (white, non-Hispanic vs other), and adherence ($\geq$95\% vs $<$95\%). Viral load was transformed to the log10 scale to improve normality. Participants missing baseline covariates, baseline or second year outcomes, or second year adherence were removed, yielding a final sample of 463 individuals used for all models to ensure comparability across outcomes.
+All analyses were conducted in R v4.5.2 (2025-10-31 ucrt). The original dataset provided by the investigator included 715 individuals at baseline. Implausible BMI values (-1, 999, or >250) were set to missing. Categorical covariates were collapsed as follows to ensure adequate sample sizes: smoking status (non or former vs. current), education status (no college degree vs college degree and above), race/ethnicity (white, non-Hispanic vs other), and adherence (95\% and above vs less than 95\%). Viral load was transformed to the log10 scale to improve normality. Participants missing baseline covariates, baseline or second year outcomes, or second year adherence were removed, yielding a final sample of 463 individuals used for all models to ensure comparability across outcomes.
 
-#### Primary Analysis 
+#### Primary Analysis:
 
 For each second year outcome, a linear regression was fit with baseline hard drug use as the primary predictor, adjusting for age, BMI, smoking status, education status, and race/ethnicity. Each model additionally adjusted for the baseline value of the corresponding outcome to account for pre-treatment differences. Frequentist models reported point estimates, 95\% confidence intervals (CIs), and unadjusted p-values. All four outcomes were prespecified as equally important, so no adjustments were applied.
 
 Bayesian models were implemented in STAN with vaguely informative priors (N(0,1000) for regression coefficients, half-normal(0,1000) for residual SD), reflecting limited prior knowledge. The intercept was not centered due to the large variance. Sampling used the Hamiltonian Monte Carlo (HMC) algorithm with the no-U-turn sampler (NUTS). Models were fit using four chains with 5000 iterations following 2000 burn-in with a fixed seed for reproducibility. Convergence and mixing were assessed with R-hat, bulk and tail effective sample sizes, trace plots, autocorrelation plots, and posterior density plots. All diagnostics indicated good convergence and adequate mixing across all models. Posterior means, 95% highest posterior density intervals (HPDIs), and posterior probabilities were reported. Posterior probabilities were based on clinically meaningful thresholds for each outcome (two-sided): 0.5 log10 (viral load), 50 cells (CD4+ T cell count), and 2 points (quality of life scores).
 
-#### Adherence-Adjusted Models
+#### Adherence-Adjusted Models:
 
 To evaluate whether second year adherence explained any observed associations, each model was refit to include adherence. Estimates were then compared descriptively to the primary models.
 
@@ -841,19 +850,19 @@ Because only one hard drug user had adherence <95%, a sensitivity analysis used 
 
 *Table 1* summaries baseline characteristics and outcomes by hard drug use, and *Table 2* summarizes year 2 outcomes and adherence. *Figure 1* visualizes the distributions of year 2 outcomes by hard drug status. 
 
-#### Primary Analysis
+#### Primary Analysis:
 
 Frequentist and Bayesian estimates were highly consistent (*Table 3*), Bayesian results are emphasized in this section. For viral load, the posterior mean difference associated with baseline hard drug use was -0.058 (95\% HPDI: -0.446, 0.342), with a posterior probability of 0.016 for a clinically meaningful effect. This indicates substantial uncertainty and little evidence of an association. 
 
 For CD4+ T cell count, the posterior mean difference was -163.5 cells (95\% HPDI: -225.5, -100.7). The posterior probability of a clinically meaningful effect was 1.00 and the entire 95\% HPDI exceeded the clinically meaningful threshold of 50 cells, indicating a reduction in CD4+ T cell count among individuals who reported baseline hard drug use. 
 
-For physical quality of life, the posterior mean was -3.34 (95\% HPDI: -6.02, -0.64) with a posterior probability of 0.836, suggesting there is moderate evidence of reduced physical quality of life among baseline hard drug users. 
+For physical quality of life, the posterior mean was -3.34 (95\% HPDI: -6.02, -0.63) with a posterior probability of 0.836, suggesting there is moderate evidence of reduced physical quality of life among baseline hard drug users. 
 
 For mental quality of life, the posterior mean (-0.29, 95\% HPDI: -3.87, 3.05) and posterior probability (0.265) provide little evidence of association. 
 
-#### Adherence-Adjusted Models
+#### Adherence-Adjusted Models:
 
-Adjustments for second year adherence produced minimal changes in the effect estimates (*Table 4*). For viral load, the adherence-adjusted posterior mean was attenuated by 77% from -0.058 to -0.013 (95\% HPDI: -0.416, 0.386) and the posterior probability remained low (0.014). For CD4+ T cell count, the adherence-adjusted posterior mean differed by only -3.8% and the posterior probability remained 1.00. For physical quality of life, the posterior mean had a 6% change from the unadjusted model, and the posterior probability only modestly increased to 0.866 from 0.836. For mental quality of life, the adherence-adjusted posterior mean was attenuated by 81% relative to the unadjusted model from -0.29 to -0.52 (95\% HPDI: -4.15, 2.78) and the posterior probability remained low (0.275). Across all outcomes, adjusting for adherence did not alter conclusions. 
+Adjustments for second year adherence produced minimal changes in the effect estimates (*Table 4*). For viral load, the adherence-adjusted posterior mean had a change of 7.22\% from -0.058 to -0.054 (95\% HPDI: -0.452, 0.343) and the posterior probability remained low (0.018). For CD4+ T cell count, the adherence-adjusted posterior mean differed by only 0.47\% and the posterior probability remained 1.00. For physical quality of life, the posterior mean had a 3.55% change from the unadjusted model, and the posterior probability modestly decreased to 0.866 from 0.808. For mental quality of life, the adherence-adjusted posterior mean was attenuated by 77.2% relative to the unadjusted model from -0.29 to -0.51 (95\% HPDI: -3.97, 2.94) and the posterior probability remained low (0.275). Across all outcomes, adjusting for adherence did not alter conclusions. 
 
 *Figure 2* illustrates the close agreement between frequentist and Bayesian estimates with and without adherence included in the model. 
 
@@ -873,32 +882,35 @@ File name: P1/Code/P1_Report.Rmd
 
 Data Directory: C:/Users/weiblee/OneDrive/Documents/Anschutz/Spring 2026/6624_Advanced/Weible_Advanced/P1/DataRaw
 
-\newpage
+\clearpage
 
 ```{r tab1, echo=FALSE}
 table1
 ```
+
+\clearpage
+
 ```{r tab2, echo=FALSE}
 table2
 ```
 
-\newpage
+\clearpage
 
 ![](Table3.png)
 
-\newpage
+\clearpage
 
 ![](Table4.png)
 
-\newpage 
+\clearpage 
 
 ![Year 2 observed outcomes by hard drug use at baseline.](Fig1.png)
 
-\newpage
+\clearpage
 
 ![Adjusted associations between baseline hard drug use and 2nd year clinical outcomes estimated using Frequentist and Bayesian regression models, shown separately for models with and without adherence. All models adjust for baseline outcome values, age, BMI, smoking status, education, and race. Bayesian models use weakly informative Normal(0, 1000) priors for regression coefficients and half-Normal(0, 1000) priors for residual standard deviations. Points represent the estimated effect of baseline hard drug use, with error bars showing 95% confidence intervals (Frequentist) or 95% highest posterior density intervals (Bayesian). The grey shaded region in each panel denotes the range corresponding to the two-sided clinically meaningful difference for that outcome (0.5 log10 for viral load, 50 cells for CD4 count, and 2 points for quality of life scales), providing a visual benchmark for interpreting the magnitude of estimated effects.](Fig2.png)
 
-```{r sdata_management, echo=FALSE, message=FALSE, results='hide', warning=FALSE, cache=TRUE}
+```{r sdata_management, echo=FALSE, message=FALSE, results='hide', warning=FALSE, cache=TRUE, include = FALSE}
 ## ------- Supplement - alternative adherence grouping ------- ##
 
 
@@ -1319,7 +1331,7 @@ fit_phys_adh
 fit_ment
 fit_ment_adh
 ```
-```{r sbayes_diagnostics, echo=FALSE, message=FALSE, results='hide', warning=FALSE, cache=TRUE}
+```{r sbayes_diagnostics, echo=FALSE, message=FALSE, results='hide', warning=FALSE, cache=TRUE, include = FALSE}
 diagnose_model <- function(fit, params, model_name = "model") { # MCMC Diagnostics
   message("\n Diagnostics for: ", model_name)
   
