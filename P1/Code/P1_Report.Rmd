@@ -505,9 +505,8 @@ fit_ment_adh
 diagnose_model <- function(fit, params, model_name = "model") { # MCMC Diagnostics
   message("\n Diagnostics for: ", model_name)
   
-  # Extract draws
-  draws      <- as_draws_array(fit$draws())
-  draws_df   <- as_draws_df(fit$draws())
+  # Plain numeric array
+  draws <- fit$draws(format = "array")
 
   print(
     mcmc_trace(draws, pars = params) +
@@ -515,7 +514,8 @@ diagnose_model <- function(fit, params, model_name = "model") { # MCMC Diagnosti
   ) # Trace plots
   
   message("\nSummary statistics (R-hat, ESS):")
-  print(fit$summary(variables = params))
+  summ <- fit$summary(variables = params)
+  print(as.data.frame(summ))
     # R hat and ESS
   
   print(
@@ -852,17 +852,17 @@ Because only one hard drug user had adherence <95%, a sensitivity analysis used 
 
 #### Primary Analysis:
 
-Frequentist and Bayesian estimates were highly consistent (*Table 3*), Bayesian results are emphasized in this section. For viral load, the posterior mean difference associated with baseline hard drug use was -0.058 (95\% HPDI: -0.446, 0.342), with a posterior probability of 0.016 for a clinically meaningful effect. This indicates substantial uncertainty and little evidence of an association. 
+Frequentist and Bayesian estimates were highly consistent (*Table 3*), Bayesian results are emphasized in this section. For viral load, the posterior mean difference associated with baseline hard drug use was -0.057 (95\% HPDI: -0.454, 0.343), with a posterior probability of 0.017 for a clinically meaningful effect. This indicates substantial uncertainty and little evidence of an association. 
 
-For CD4+ T cell count, the posterior mean difference was -163.5 cells (95\% HPDI: -225.5, -100.7). The posterior probability of a clinically meaningful effect was 1.00 and the entire 95\% HPDI exceeded the clinically meaningful threshold of 50 cells, indicating a reduction in CD4+ T cell count among individuals who reported baseline hard drug use. 
+For CD4+ T cell count, the posterior mean difference was -163.66 cells (95\% HPDI: -225.11, -99.97). The posterior probability of a clinically meaningful effect was 1.00 and the entire 95\% HPDI exceeded the clinically meaningful threshold of 50 cells, indicating a reduction in CD4+ T cell count among individuals who reported baseline hard drug use. 
 
-For physical quality of life, the posterior mean was -3.34 (95\% HPDI: -6.02, -0.63) with a posterior probability of 0.836, suggesting there is moderate evidence of reduced physical quality of life among baseline hard drug users. 
+For physical quality of life, the posterior mean was -3.34 (95\% HPDI: -6.03, -0.59) with a posterior probability of 0.83, suggesting there is moderate evidence of reduced physical quality of life among baseline hard drug users. 
 
-For mental quality of life, the posterior mean (-0.29, 95\% HPDI: -3.87, 3.05) and posterior probability (0.265) provide little evidence of association. 
+For mental quality of life, the posterior mean (-0.28, 95\% HPDI: -3.55, 3.36) and posterior probability (0.259) provide little evidence of association. 
 
 #### Adherence-Adjusted Models:
 
-Adjustments for second year adherence produced minimal changes in the effect estimates (*Table 4*). For viral load, the adherence-adjusted posterior mean had a change of 7.22\% from -0.058 to -0.054 (95\% HPDI: -0.452, 0.343) and the posterior probability remained low (0.018). For CD4+ T cell count, the adherence-adjusted posterior mean differed by only 0.47\% and the posterior probability remained 1.00. For physical quality of life, the posterior mean had a 3.55% change from the unadjusted model, and the posterior probability modestly decreased to 0.866 from 0.808. For mental quality of life, the adherence-adjusted posterior mean was attenuated by 77.2% relative to the unadjusted model from -0.29 to -0.51 (95\% HPDI: -3.97, 2.94) and the posterior probability remained low (0.275). Across all outcomes, adjusting for adherence did not alter conclusions. 
+Adjustments for second year adherence produced minimal changes in the effect estimates (*Table 4*). For viral load, the adherence-adjusted posterior mean had a change of 77.6\% from -0.057 to -0.013 (95\% HPDI: -0.417, 0.377) and the posterior probability remained low (0.014). For CD4+ T cell count, the adherence-adjusted posterior mean differed by only 3.78\% and the posterior probability remained 1.00. For physical quality of life, the posterior mean had a -6.92% change from the unadjusted model, and the posterior probability modestly increased to 0.870 from 0.833. For mental quality of life, the adherence-adjusted posterior mean was attenuated by 94.0% relative to the unadjusted model from -0.28 to -0.54 (95\% HPDI: -3.99, 2.91) and the posterior probability remained low (0.275). Across all outcomes, adjusting for adherence did not alter conclusions. 
 
 *Figure 2* illustrates the close agreement between frequentist and Bayesian estimates with and without adherence included in the model. 
 
@@ -1335,9 +1335,8 @@ fit_ment_adh
 diagnose_model <- function(fit, params, model_name = "model") { # MCMC Diagnostics
   message("\n Diagnostics for: ", model_name)
   
-  # Extract draws
-  draws      <- as_draws_array(fit$draws())
-  draws_df   <- as_draws_df(fit$draws())
+  # Plain numeric array
+  draws <- fit$draws(format = "array")
 
   print(
     mcmc_trace(draws, pars = params) +
@@ -1345,7 +1344,8 @@ diagnose_model <- function(fit, params, model_name = "model") { # MCMC Diagnosti
   ) # Trace plots
   
   message("\nSummary statistics (R-hat, ESS):")
-  print(fit$summary(variables = params))
+  summ <- fit$summary(variables = params)
+  print(as.data.frame(summ))
     # R hat and ESS
   
   print(
