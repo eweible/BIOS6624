@@ -896,19 +896,19 @@ table2
 
 \clearpage
 
-![](Table3.png)
+![](Figures/Table3.png)
 
 \clearpage
 
-![](Table4.png)
+![](Figures/Table4.png)
 
 \clearpage 
 
-![Year 2 observed outcomes by hard drug use at baseline.](Fig1.png)
+![Year 2 observed outcomes by hard drug use at baseline.](Figures/Fig1.png)
 
 \clearpage
 
-![Adjusted associations between baseline hard drug use and 2nd year clinical outcomes estimated using Frequentist and Bayesian regression models, shown separately for models with and without adherence. All models adjust for baseline outcome values, age, BMI, smoking status, education, and race. Bayesian models use weakly informative Normal(0, 1000) priors for regression coefficients and half-Normal(0, 1000) priors for residual standard deviations. Points represent the estimated effect of baseline hard drug use, with error bars showing 95% confidence intervals (Frequentist) or 95% highest posterior density intervals (Bayesian). The grey shaded region in each panel denotes the range corresponding to the two-sided clinically meaningful difference for that outcome (0.5 log10 for viral load, 50 cells for CD4 count, and 2 points for quality of life scales), providing a visual benchmark for interpreting the magnitude of estimated effects.](Fig2.png)
+![Adjusted associations between baseline hard drug use and 2nd year clinical outcomes estimated using Frequentist and Bayesian regression models, shown separately for models with and without adherence. All models adjust for baseline outcome values, age, BMI, smoking status, education, and race. Bayesian models use weakly informative Normal(0, 1000) priors for regression coefficients and half-Normal(0, 1000) priors for residual standard deviations. Points represent the estimated effect of baseline hard drug use, with error bars showing 95% confidence intervals (Frequentist) or 95% highest posterior density intervals (Bayesian). The grey shaded region in each panel denotes the range corresponding to the two-sided clinically meaningful difference for that outcome (0.5 log10 for viral load, 50 cells for CD4 count, and 2 points for quality of life scales), providing a visual benchmark for interpreting the magnitude of estimated effects.](Figures/Fig2.png)
 
 ```{r sdata_management, echo=FALSE, message=FALSE, results='hide', warning=FALSE, cache=TRUE, include = FALSE}
 ## ------- Supplement - alternative adherence grouping ------- ##

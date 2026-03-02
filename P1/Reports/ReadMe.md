@@ -6,4 +6,5 @@ Details about the files:
   
 File | Description
 ---|---------------------------------------------------------------------
-P1_Data_Analysis_Plan.pdf | Report describing dataset and analysis plan.   
+P1_Data_Analysis_Plan.pdf | Report describing dataset and analysis plan. 
+P1_Report.pdf             | Report describing final analysis and results.
