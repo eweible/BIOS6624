@@ -44,8 +44,8 @@ dat_sub <- dat_raw %>%
       TRUE ~ NA_character_
     ), # Collapse smoking status
     adh_group = case_when(
-      ADH %in% c(1, 2) ~ "95% and Above",
-      ADH %in% c(3, 4) ~ "<95%",
+      ADH %in% c(1) ~ "100%",
+      ADH %in% c(2, 3, 4) ~ "<95%",
       TRUE ~ NA_character_
     ), # Collapse adherence 
     hard_drugs = case_when(
