@@ -10,6 +10,8 @@ linestretch: 2
 fig.cap: true
 header-includes:
   - \usepackage{float}
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -26,6 +28,7 @@ library(tidybayes)
 library(tibble)
 library(mcmcse)
 library(gt)
+library(scales)
 dat_raw <- read.csv(here::here("P1/DataRaw", "hiv_6624_final.csv"))
 ```
 
@@ -493,7 +496,7 @@ tab_bayes_adh <- purrr::map2_df(model_list, thresholds, summarize_stan_beta2, .i
   select(Outcome, `Posterior Mean` = PM_adh, `Change in PM (%)` = Percent_Change, `95% HPDI` = HPDI_adh, `Posterior Probability` = PP_adh)
     # Select and rename final columns
 ```
-```{r comb_tables, echo=FALSE, message=FALSE, results='hide', warning=FALSE, cache=TRUE}
+```{r comb_tables, echo=FALSE, message=FALSE, results='hide', warning=FALSE, cache = TRUE}
 tab_comb <- dplyr::left_join(tab_freq, tab_bayes, by = "Outcome") %>%
     # Combine two tables
   filter(!grepl("_adh$", Outcome)) %>%
@@ -513,11 +516,11 @@ tab_comb <- dplyr::left_join(tab_freq, tab_bayes, by = "Outcome") %>%
     decimals = 3
   ) %>% # Round estimates
   tab_header(
-    title = "Comparison of Frequentist and Bayesian Estimates for Associations Between Hard Drug Use and Clinical Outcomes"
+    title = "Table 3: Comparison of Frequentist and Bayesian Estimates for Associations Between Hard Drug Use and Clinical Outcomes"
   ) %>% 
   tab_footnote(
     footnote = "Comparison of Frequentist and Bayesian regression estimates for the association between baseline hard drug use and year‑2 outcomes. All models adjust for baseline outcome values, age, BMI, smoking status, education, and race. Bayesian models use weakly informative Normal(0, 1000) priors for regression coefficients and half‑Normal(0, 1000) priors for residual SD." 
-  ) 
+  )
 
 tab_adh <- dplyr::left_join(tab_freq_adh, tab_bayes_adh, by = "Outcome") %>%
     # Combine two tables
@@ -536,7 +539,7 @@ tab_adh <- dplyr::left_join(tab_freq_adh, tab_bayes_adh, by = "Outcome") %>%
     decimals = 3
   ) %>% # Round estimates
   tab_header(
-    title = "Impact of Adherence Adjustment on Frequentist and Bayesian Estimates for Associations Between Hard Drug Use and Clinical Outcomes"
+    title = "Table 4: Impact of Adherence Adjustment on Frequentist and Bayesian Estimates for Associations Between Hard Drug Use and Clinical Outcomes"
   ) %>%
   tab_footnote(
     footnote = "Frequentist and Bayesian regression estimates for the association between baseline hard drug use and year‑2 outcomes after adjusting for adherence. All models also adjust for baseline outcome values, age, BMI, smoking status, education, and race. Percent change reflects the relative difference between adherence‑adjusted and non‑adjusted models, calculated for both the frequentist point estimate and the Bayesian posterior mean. Bayesian models use weakly informative Normal(0, 1000) priors for regression coefficients and half‑Normal(0, 1000) priors for residual SD." 
@@ -591,7 +594,7 @@ forest_df <-
   purrr::map_df(mod_list, summarize_lm_beta2, .id = "Model") %>%
     # Frequentist
   mutate(
-    Adjustment = ifelse(grepl("_adh$", Model), "Adherence-adjusted", "Unadjusted"),
+    Adjustment = ifelse(grepl("_adh$", Model), "With Adherence", "Unadjusted"),
     Outcome = sub("_adh$", "", Model),
     Method = "Frequentist"
   ) %>% # Add labels 
@@ -608,7 +611,7 @@ forest_df <-
     purrr::map2_df(model_list, thresholds, summarize_stan_beta2, .id = "Model") %>%
         # Bayesian
       mutate(
-        Adjustment = ifelse(grepl("_adh$", Model), "Adherence-adjusted", "Unadjusted"),
+        Adjustment = ifelse(grepl("_adh$", Model), "With Adherence", "Unadjusted"),
         Outcome = sub("_adh$", "", Model),
         Method = "Bayesian"
       ) %>% # Add labels
@@ -670,12 +673,12 @@ fig2 <- ggplot(forest_df, aes(x = Estimate, y = Method, color = Method, shape = 
     # Facet by outcome
   scale_shape_manual(values = c(
     "Unadjusted" = 16,
-    "Adherence-adjusted" = 17
+    "With Adherence" = 17
   )) + # Add shapes based on adherence 
   labs(
     x = "Adjusted Effect of Baseline Hard Drug Use",
     y = "",
-    title = "Adjusted Associations Between Baseline Hard Drug Use and 2nd Year Outcomes",
+    title = "Associations Between Baseline Hard Drug Use and Year 2 Outcomes",
     color = "Model Type",
     shape = "Adjustment",
   ) +
@@ -698,23 +701,25 @@ All analyses were conducted in R v4.5.2 (2025-10-31 ucrt). BMI values coded as -
 
 For each outcome at year 2, linear regression was used to identify the association with hard drug use at baseline, adjusting for age, BMI, smoking status, education, and race/ethnicity. Frequentist models reported point estimates, 95\% confidence intervals (CI), and unadjusted p-values. Bayesian models were implemented using STAN with vaguely informative priors as prior knowledge is limited: N(0,1000) for regression coefficients and half-normal(0,1000) for residual SD. The intercept was not centered due to the large variance and model fit was diagnosed with R-hat and ESS. Bayesian models reported posterior means, 95% highest posterior density intervals (HPDI), and posterior probabilities. Posterior probabilities were calculated from clinically meaningful differences for each outcome (two-sided), defined as follows: 0.5 log10 (viral load), 50 cells (CD4+ T cell count), and 2 points (quality of life). These models were additionally fit including year 2 adherence and descriptively compared to the original models. 
 
+Because only one participant in the hard‑drug‑use group had adherence <95%, we conducted a sensitivity analysis using an alternative adherence grouping (<100% vs. 100%) to ensure that sparse data did not distort the adherence‑adjusted estimates. This alternative definition increased the number of individuals classified as having suboptimal adherence from 1 to 18 within the hard‑drug‑use group, improving model stability. The Bayesian posterior means, HPDIs, and posterior probabilities under this alternative specification were nearly identical to those obtained using the investigator‑specified <95% cutoff, and the corresponding frequentist estimates showed the same pattern. Across all outcomes, the direction, magnitude, and uncertainty of the adherence‑adjusted associations changed only trivially, and the substantive interpretation remained unchanged. These findings indicate that the adherence definition does not materially influence the estimated relationship between hard drug use and year‑2 clinical outcomes, and we therefore retained the investigator‑requested adherence grouping for consistency with the study protocol.
+
 ## Results
 
-*Table 1* summaries key variables in the final sample of 463 at baseline across baseline hard drug use. *Table 2* summarizes key variables at year 2 across baseline hard drug use. 
+*Table 1* summaries key variables in the final sample of 463 at baseline across baseline hard drug use. *Table 2* summarizes key variables at year 2 across baseline hard drug use. *Figure 1* visualizes the distributions of year 2 outcomes by hard drug status. 
 
 The modeling outcomes are summarized in *Table 3*. The frequentist and Bayesian outcomes agree well, so only Bayesian outcomes will be stated in the text. For viral load, the posterior mean for the association with baseline hard drug use was -0.058 with a 95\% HPDI of (-0,446, 0.342), indicating substantial posterior uncertainty and little evidence of a clinically meaningful effect, defined as a 0.5 log10 change. This is supported by the posterior probability of 0.016, which suggests that there was little support for a harmful association. For CD4+ T cell count, the posterior mean was -163.5 cells (95\% HPDI: (-225.5, -100.7)). The posterior probability that the effect was negative was 1.00, strongly indicating a reduction in CD4 T cell count among individuals who reported baseline hard drug use. This reduction was clinically meaningful, as both sides of the 95\% HPDI are greater than 50 cells. Differences in quality of life scores are defined as clinically meaningful when there is a change of 2 points. For physical quality of life, the posterior mean was -3.34 with a 95\% HPDI of (-6.02, -0.64). Along with the posterior probability of 0.836, there is moderate evidence of reduced physical quality of life among those who reported hard drug use. In contrast, for mental quality of life, the posterior mean (-0.29, 95\% HPDI: (-3.87, 3.05)) and posterior probability (0.265) do not provide strong evidence of any association. 
 
 Adjustments for adherence produced minimal changes in the Bayesian estimates for most outcomes, and the posterior distributions remained aligned with the frequentist results (*Table 4*). For viral load, the adherence-adjusted posterior mean was attenuated by 77% from -0.058 to -0.013 (95\% HPDI: -0.416, 0.386) and the posterior probability remained low (0.014). These results maintain the conclusion that there is little support for any association between hard drug use and viral load regardless of the adherence adjustment. For CD4+ T cell count, the adherence-adjusted posterior mean differed by only -3.8% and the posterior probability remained 1.00. This continues to support the conclusion that there was a reduction in CD4+ T cell count at year 2 among baseline hard drug users and that adherence does not explain the observed association. For physical quality of life, the posterior mean had a 6% change from the unadjusted model, and the posterior probability only modestly increased to 0.866 from 0.836, continuing to provide evidence for lower second year physical quality of life scores among baseline hard drug users. However, the small shifts do not suggest that adherence accounts for much of this association. For mental quality of life, the adherence-adjusted posterior mean was attenuated by 81% relative to the unadjusted model from -0.29 to -0.52 (95\% HPDI: (-4.15, 2.78)). However, the posterior probability remained low (0.275), indicating little support for an association between hard drug use and mental quality of life regardless of the adherence adjustment. 
- 
-Because only one participant in the hard‑drug‑use group had adherence <95%, we conducted a sensitivity analysis using an alternative adherence grouping (<100% vs. 100%) to ensure that sparse data did not distort the adherence‑adjusted estimates. This alternative definition increased the number of individuals classified as having suboptimal adherence from 1 to 18 within the hard‑drug‑use group, improving model stability. The Bayesian posterior means, HPDIs, and posterior probabilities under this alternative specification were nearly identical to those obtained using the investigator‑specified <95% cutoff, and the corresponding frequentist estimates showed the same pattern. Across all outcomes, the direction, magnitude, and uncertainty of the adherence‑adjusted associations changed only trivially, and the substantive interpretation remained unchanged. These findings indicate that the adherence definition does not materially influence the estimated relationship between hard drug use and year‑2 clinical outcomes, and we therefore retained the investigator‑requested adherence grouping for consistency with the study protocol.
 
+*Figure 2* visually shows the agreement between the frequentist and Bayesian approaches with and without adherence included in the model. 
 
- 
-## Appendix
-
-
+## Discussion
 
 # TODO - edit names in tables and reorder groupings
+
+## Appendix
+
+#### Tables and Figures
 
 ```{r tab1, echo=FALSE}
 table1
@@ -722,18 +727,26 @@ table1
 ```{r tab2, echo=FALSE}
 table2
 ```
-```{r tab3, echo=FALSE}
-tab_comb
-```
-```{r tab4, echo=FALSE}
-tab_adh
-```
-```{r fig1, echo=FALSE, fig.cap="Year 2 observed outcomes by hard drug use at baseline."}
-fig1
-```
-```{r fig2, echo=FALSE, fig.cap="Adjusted associations between baseline hard drug use and 2nd year clinical outcomes estimated using Frequentist and Bayesian regression models, shown separately for models with and without adherence. All models adjust for baseline outcome values, age, BMI, smoking status, education, and race. Bayesian models use weakly informative Normal(0, 1000) priors for regression coefficients and half‑Normal(0, 1000) priors for residual standard deviations. Points represent the estimated effect of baseline hard drug use, with error bars showing 95% confidence intervals (Frequentist) or 95% highest posterior density intervals (Bayesian). The grey shaded region in each panel denotes the range corresponding to the two-sided clinically meaningful difference for that outcome (0.5 log10 for viral load, 50 cells for CD4 count, and 2 points for quality of life scales), providing a visual benchmark for interpreting the magnitude of estimated effects."}
-fig2
-```
+
+\newpage 
+
+![Year 2 observed outcomes by hard drug use at baseline.](Fig1.png)
+
+\newpage
+
+![](Table3.png)
+
+\newpage
+
+![](Table4.png)
+
+\newpage
+
+![Adjusted associations between baseline hard drug use and 2nd year clinical outcomes estimated using Frequentist and Bayesian regression models, shown separately for models with and without adherence. All models adjust for baseline outcome values, age, BMI, smoking status, education, and race. Bayesian models use weakly informative Normal(0, 1000) priors for regression coefficients and half‑Normal(0, 1000) priors for residual standard deviations. Points represent the estimated effect of baseline hard drug use, with error bars showing 95% confidence intervals (Frequentist) or 95% highest posterior density intervals (Bayesian). The grey shaded region in each panel denotes the range corresponding to the two-sided clinically meaningful difference for that outcome (0.5 log10 for viral load, 50 cells for CD4 count, and 2 points for quality of life scales), providing a visual benchmark for interpreting the magnitude of estimated effects.](Fig2.png)
+
+\newpage
+
+#### Directories
 
 Code Directory: https://github.com/eweible/BIOS6624.git
 
