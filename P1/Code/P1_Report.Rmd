@@ -22,6 +22,7 @@ library(tidyverse)
 library(purrr)
 library(ggplot2)
 library(table1)
+library(Hmisc)
 library(cmdstanr)
 library(posterior)
 library(tidybayes)
@@ -48,7 +49,7 @@ dat_sub <- dat_raw %>%
     # Filter to baseline and year 2
   mutate(
     race_group = case_when(
-      RACE == 1 ~ "White nonHisp",
+      RACE == 1 ~ "White, non-Hispanic",
       RACE %in% 2:8 ~ "Other",
       TRUE ~ NA_character_
     ), # Collapse race
@@ -78,7 +79,19 @@ dat_sub <- dat_raw %>%
     ), # Exclude implausible BMI values
     log10VLOAD = log10(VLOAD)
       # Convert VLOAD to log10 scale
-  )
+  ) %>%
+  mutate(
+    smoke_group = factor(smoke_group, 
+                         levels = c("Non or Former Smoker", "Current Smoker")), 
+    educ_group = factor(educ_group, 
+                        levels = c("No College Degree", "College Degree and above")), 
+    race_group = factor(race_group, 
+                        levels = c("White, non-Hispanic", "Other")), 
+    adh_group = factor(adh_group, 
+                       levels = c("95% and Above", "<95%")), 
+    hard_drugs = factor(hard_drugs, 
+                        levels = c("No", "Yes"))
+  ) # Reorder groups
 
 dat_wide <- dat_sub %>%
   pivot_wider(
@@ -108,9 +121,31 @@ dat_wide <- dat_wide %>%
   ) # Only select relevant columns
       # 463 final sample size
 
-table1 <- table1(~ log10VLOAD_0 + LEU3N_0 + AGG_PHYS_0 + AGG_MENT_0 + age_0 + BMI_0 + smoke_group_0 + educ_group_0 + race_group_0 | hard_drugs_0, dat_wide, caption="Baseline Characteristics by Baseline Hard Drug Use")
+dat_tab <- dat_wide
+label(dat_tab$log10VLOAD_0) <- "Viral Load (log10 HIV copies/mL blood)"
+label(dat_tab$LEU3N_0) <- "CD4+ T Cell Count"
+label(dat_tab$AGG_PHYS_0) <- "Physical Quality of Life (SF-36 Aggregate)"
+label(dat_tab$AGG_MENT_0) <- "Mental Quality of Life (SF-36 Aggregate)"
+label(dat_tab$age_0) <- "Age (years)"
+label(dat_tab$BMI_0) <- "BMI (kg/m^2)"
+label(dat_tab$smoke_group_0) <- "Smoking Status"
+label(dat_tab$educ_group_0) <- "Education Status"
+label(dat_tab$race_group_0) <- "Race/Ethnicity"
+label(dat_tab$log10VLOAD_2) <- "Viral Load (log10 HIV copies/mL blood)"
+label(dat_tab$LEU3N_2) <- "CD4+ T Cell Count"
+label(dat_tab$AGG_PHYS_2) <- "Physical Quality of Life (SF-36 Aggregate)"
+label(dat_tab$AGG_MENT_2) <- "Mental Quality of Life (SF-36 Aggregate)"
+label(dat_tab$adh_group_2) <- "Adherence to HAART since Last Visit"
+  # Add labels for table 1
+
+table1 <- table1(~ log10VLOAD_0 + LEU3N_0 + AGG_PHYS_0 + AGG_MENT_0 + age_0 + 
+                   BMI_0 + smoke_group_0 + educ_group_0 + race_group_0 | 
+                   hard_drugs_0, dat_tab,
+                   caption="Baseline Characteristics by Baseline Hard Drug Use")
   # Generate table 1 (baseline)
-table2 <- table1(~ log10VLOAD_2 + LEU3N_2 + AGG_PHYS_2 + AGG_MENT_2 + adh_group_2 | hard_drugs_0, dat_wide, caption="Year 2 Characteristics by Baseline Hard Drug Use")
+table2 <- table1(~ log10VLOAD_2 + LEU3N_2 + AGG_PHYS_2 + AGG_MENT_2 + 
+                   adh_group_2 | hard_drugs_0, dat_tab, 
+                 caption="Year 2 Characteristics by Baseline Hard Drug Use")
   # Generate table 2 (year 2)
 ```
 ```{r frequentist, echo=FALSE, results='hide', message=FALSE, warning=FALSE, cache=TRUE}
@@ -564,9 +599,9 @@ dat_plot <- dat_wide %>%
     Outcome = recode(
       Outcome,
       log10VLOAD_2 = "Viral Load (log10 HIV copies/mL blood)",
-      LEU3N_2      = "CD4+ T Cell Count",
-      AGG_PHYS_2   = "Physical Quality of Life (SF-36 Aggregate)",
-      AGG_MENT_2   = "Mental Quality of Life (SF-36 Aggregate)"
+      LEU3N_2 = "CD4+ T Cell Count",
+      AGG_PHYS_2 = "Physical Quality of Life (SF-36 Aggregate)",
+      AGG_MENT_2 = "Mental Quality of Life (SF-36 Aggregate)"
     )
   ) # Rename for figure
 
@@ -715,11 +750,21 @@ Adjustments for adherence produced minimal changes in the Bayesian estimates for
 
 ## Discussion
 
+Baseline hard drug use was associated with substantially lower CD4+ T cell counts and moderately lower physical quality‑of‑life scores at year 2, after adjusting for baseline covariates. Associations with viral load and mental quality‑of‑life were small and highly uncertain. These results were consistent across Bayesian and frequentist models, and the posterior probabilities indicated strong support only for the CD4+ association. Incorporating second year adherence into the models produced minimal changes in effect estimates or uncertainty, and a sensitivity analysis using an alternative adherence definition yielded nearly identical results. The analysis suggests that baseline hard drug use is linked to poorer immunologic and physical outcomes two years after HAART initiation, and that this pattern is not explained by the available adherence measure.
+
+Several limitations may affect interpretation. Hard drug use and adherence were each measured at a single time point and dichotomized, limiting the ability to capture variation that may influence outcomes. Complete‑case analysis may introduce bias if missingness is related to unobserved characteristics associated with both exposure and outcomes. Important potential confounders such as socioeconomic factors, mental‑health conditions, or co‑occurring infections were not included. Finally, the results reflect the structure of the MACS cohort and may not generalize to other populations. These considerations should be taken into account when interpreting the magnitude and stability of the estimated associations.
+
 # TODO - edit names in tables and reorder groupings
 
 ## Appendix
 
-#### Tables and Figures
+Code Directory: https://github.com/eweible/BIOS6624.git
+
+File name: P1/Code/P1_Report.Rmd
+
+Data Directory: C:/Users/weiblee/OneDrive/Documents/Anschutz/Spring 2026/6624_Advanced/Weible_Advanced/P1/DataRaw
+
+\newpage
 
 ```{r tab1, echo=FALSE}
 table1
@@ -727,10 +772,6 @@ table1
 ```{r tab2, echo=FALSE}
 table2
 ```
-
-\newpage 
-
-![Year 2 observed outcomes by hard drug use at baseline.](Fig1.png)
 
 \newpage
 
@@ -740,16 +781,11 @@ table2
 
 ![](Table4.png)
 
+\newpage 
+
+![Year 2 observed outcomes by hard drug use at baseline.](Fig1.png)
+
 \newpage
 
 ![Adjusted associations between baseline hard drug use and 2nd year clinical outcomes estimated using Frequentist and Bayesian regression models, shown separately for models with and without adherence. All models adjust for baseline outcome values, age, BMI, smoking status, education, and race. Bayesian models use weakly informative Normal(0, 1000) priors for regression coefficients and half‑Normal(0, 1000) priors for residual standard deviations. Points represent the estimated effect of baseline hard drug use, with error bars showing 95% confidence intervals (Frequentist) or 95% highest posterior density intervals (Bayesian). The grey shaded region in each panel denotes the range corresponding to the two-sided clinically meaningful difference for that outcome (0.5 log10 for viral load, 50 cells for CD4 count, and 2 points for quality of life scales), providing a visual benchmark for interpreting the magnitude of estimated effects.](Fig2.png)
 
-\newpage
-
-#### Directories
-
-Code Directory: https://github.com/eweible/BIOS6624.git
-
-File name: P1/Code/P1_Report.Rmd
-
-Data Directory: C:/Users/weiblee/OneDrive/Documents/Anschutz/Spring 2026/6624_Advanced/Weible_Advanced/P1/DataRaw
