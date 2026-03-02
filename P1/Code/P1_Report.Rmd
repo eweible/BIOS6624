@@ -37,7 +37,7 @@ Ezra Weible[^1]
 
 [^1]: Biostatistics Masters Student, Colorado School of Public Health, CU Anschutz Medical Campus
 
-```{r data_management, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+```{r data_management, echo=FALSE, message=FALSE, results='hide', warning=FALSE, cache=TRUE}
 dat_sub <- dat_raw %>%
   filter(
     years %in% c(0, 2)
@@ -110,8 +110,7 @@ table1 <- table1(~ log10VLOAD_0 + LEU3N_0 + AGG_PHYS_0 + AGG_MENT_0 + age_0 + BM
 table2 <- table1(~ log10VLOAD_2 + LEU3N_2 + AGG_PHYS_2 + AGG_MENT_2 + adh_group_2 | hard_drugs_0, dat_wide, caption="Year 2 Characteristics by Baseline Hard Drug Use")
   # Generate table 2 (year 2)
 ```
-
-```{r frequentist, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+```{r frequentist, echo=FALSE, results='hide', message=FALSE, warning=FALSE, cache=TRUE}
 ## Frequentist models
 mod_vload <- lm(log10VLOAD_2 ~ hard_drugs_0 + log10VLOAD_0 + age_0 + BMI_0 +
                   smoke_group_0 + educ_group_0 + race_group_0, data = dat_wide)
@@ -146,8 +145,8 @@ summary(mod_phys_adh)
 summary(mod_ment)
 summary(mod_ment_adh)
 ```
-```{r freq_tables, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
-summarise_lm_beta2 <- function(mod) { # Function to extract frequentist output
+```{r freq_tables, echo=FALSE, message=FALSE, results='hide', warning=FALSE, cache=TRUE}
+summarize_lm_beta2 <- function(mod) { # Function to extract frequentist output
   sm <- summary(mod)
     # Full model summary
   coefs <- sm$coefficients
@@ -180,18 +179,17 @@ mod_list <- list(
   `Physical Quality of Life (SF-36 Aggregate)_adh` = mod_phys_adh,
   `Mental Quality of Life (SF-36 Aggregate)` = mod_ment,
   `Mental Quality of Life (SF-36 Aggregate)_adh` = mod_ment_adh
-) # List of models, renamed for tables
+) # List of frequentist models, renamed for tables
 
-tab_freq <- purrr::map_df(mod_list, summarise_lm_beta2, .id = "Model") %>%
+tab_freq <- purrr::map_df(mod_list, summarize_lm_beta2, .id = "Model") %>%
     # Apply function to each model
   mutate(
     CI = sprintf("(%0.3f, %0.3f)", CI_2.5, CI_97.5)
-      # Combine CIs and limit to 3 decimal places
-  ) %>%
+  ) %>% # Combine CIs and limit to 3 decimal places
   select(Outcome = Model, `Point Estimate` = PE, `95% CI` = CI, `Unadjusted P-Value` = p_value)
     # Select and rename final columns
 
-tab_freq_adh <- purrr::map_df(mod_list, summarise_lm_beta2, .id = "Model") %>%
+tab_freq_adh <- purrr::map_df(mod_list, summarize_lm_beta2, .id = "Model") %>%
     # Apply function to each model
   mutate(
     Outcome = sub("_adh$", "", Model),
@@ -222,7 +220,471 @@ tab_freq_adh <- purrr::map_df(mod_list, summarise_lm_beta2, .id = "Model") %>%
   select(Outcome, `Point Estimate` = PE_adh, `Change in PE (%)` = Percent_Change, `95% CI` = CI_adh, `Unadjusted P-Value` = p_value_adh)
     # Select and rename final columns
 ```
+```{r stan_setup, echo=FALSE, message=FALSE, results='hide', warning=FALSE, cache=TRUE}
+## Set up STAN - only run one time, then comment out
 
+# # Dependencies
+# library(cmdstanr)
+# library(bayesplot)  # diagnostic plots of the MCMC chains
+# library(posterior)  # for summarizing posterior draws
+# library(bayestestR) # for calculating higest density posterior intervals
+# library(mcmcse)     # for calculating MCMCSE's
+# library(loo)        # for getting model fit statistics (WAIC and LOO-IC)
+# library(dplyr)
+# library(tibble)
+# 
+# ####Bayesian Analysis
+# ###########################################################################
+# # STEP 1: Define the model
+# # This is a general linear regression set up for STAN
+# # It is using a half normal prior on sigma
+# # and normal priors on the regression coefficients
+# # once the stan file is written it can be reused
+# 
+# # Do not need to rerun after initial. Works for any
+# # linear regression you would like to do. Uses half normal
+# # Saves program in correct file format in STAN
+# ###########################################################################
+# 
+# stan_file <- write_stan_file("data {
+#   int<lower=0> N;                  // number of observations
+#   int<lower=0> P;                  // number of predictors including intercept
+#   matrix[N, P] X;                  // design matrix (first column = intercept)
+#   vector[N] y;                     // outcome
+# 
+#   vector[P] prior_mean;            // prior means for each beta
+#   vector<lower=0>[P] prior_sd;     // prior SDs for each beta
+# 
+#   real<lower=0> sigma_prior_sd;    // SD for half-normal prior on sigma
+# }
+# 
+# parameters {
+#   vector[P] beta;                  // regression coefficients
+#   real<lower=0> sigma;             // residual SD
+# }
+# 
+# model {
+#   // Vectorized priors for regression coefficients
+#   beta ~ normal(prior_mean, prior_sd);
+# 
+#   // Half-normal prior for sigma
+#   sigma ~ normal(0, sigma_prior_sd);
+# 
+#   // Likelihood
+#   y ~ normal(X * beta, sigma);
+# 
+# 
+# }
+# 
+# generated quantities {
+#   // log likelihood for each observation for calculating model fit stats
+#   vector[N] log_lik;
+#   for (n in 1:N) {
+#     log_lik[n] = normal_lpdf(y[n] | X[n] * beta, sigma);}
+#   }", dir="STAN", basename='linear_regression_half_normal'
+# )
+# 
+# ###########################################################################
+# # STEP 2: Compile the Stan program
+# ###########################################################################
+mod <- cmdstan_model('STAN/linear_regression_half_normal.stan')
+```
+```{r bayes_setup, echo=FALSE, message=FALSE, results='hide', warning=FALSE, cache=TRUE}
+# Outcome
+y1 <- dat_wide$log10VLOAD_2
+y2 <- dat_wide$LEU3N_2
+y3 <- dat_wide$AGG_PHYS_2
+y4 <- dat_wide$AGG_MENT_2
+
+
+# Design matrix
+X1a <- model.matrix(~ hard_drugs_0 + log10VLOAD_0 + age_0 + BMI_0 +
+                    smoke_group_0 + educ_group_0 + race_group_0, data = dat_wide)
+X1b <- model.matrix(~ hard_drugs_0 + log10VLOAD_0 + age_0 + BMI_0 +
+                    smoke_group_0 + educ_group_0 + race_group_0 + adh_group_2,
+                   data = dat_wide)
+X2a <- model.matrix(~ hard_drugs_0 + LEU3N_0 + age_0 + BMI_0 +
+                    smoke_group_0 + educ_group_0 + race_group_0, data = dat_wide)
+X2b <- model.matrix(~ hard_drugs_0 + LEU3N_0 + age_0 + BMI_0 +
+                    smoke_group_0 + educ_group_0 + race_group_0 + adh_group_2,
+                   data = dat_wide)
+X3a <- model.matrix(~ hard_drugs_0 + AGG_PHYS_0 + age_0 + BMI_0 +
+                    smoke_group_0 + educ_group_0 + race_group_0, data = dat_wide)
+X3b <- model.matrix(~ hard_drugs_0 + AGG_PHYS_0 + age_0 + BMI_0 +
+                    smoke_group_0 + educ_group_0 + race_group_0 + adh_group_2,
+                   data = dat_wide)
+X4a <- model.matrix(~ hard_drugs_0 + AGG_MENT_0 + age_0 + BMI_0 +
+                    smoke_group_0 + educ_group_0 + race_group_0, data = dat_wide)
+X4b <- model.matrix(~ hard_drugs_0 + AGG_MENT_0 + age_0 + BMI_0 +
+                    smoke_group_0 + educ_group_0 + race_group_0 + adh_group_2,
+                   data = dat_wide)
+
+# Sizes
+N1a <- nrow(X1a)
+P1a <- ncol(X1a)
+N1b <- nrow(X1b)
+P1b <- ncol(X1b)
+N2a <- nrow(X2a)
+P2a <- ncol(X2a)
+N2b <- nrow(X2b)
+P2b <- ncol(X2b)
+N3a <- nrow(X3a)
+P3a <- ncol(X3a)
+N3b <- nrow(X3b)
+P3b <- ncol(X3b)
+N4a <- nrow(X4a)
+P4a <- ncol(X4a)
+N4b <- nrow(X4b)
+P4b <- ncol(X4b)
+
+# Priors: Normal(0, 1000) for all betas, Half-normal(0, 1000) for sigma
+prior_mean_1a <- rep(0, P1a); prior_sd_1a   <- rep(1000, P1a)
+prior_mean_1b <- rep(0, P1b); prior_sd_1b   <- rep(1000, P1b)
+prior_mean_2a <- rep(0, P2a); prior_sd_2a   <- rep(1000, P2a)
+prior_mean_2b <- rep(0, P2b); prior_sd_2b   <- rep(1000, P2b)
+prior_mean_3a <- rep(0, P3a); prior_sd_3a   <- rep(1000, P3a)
+prior_mean_3b <- rep(0, P3b); prior_sd_3b   <- rep(1000, P3b)
+prior_mean_4a <- rep(0, P4a); prior_sd_4a   <- rep(1000, P4a)
+prior_mean_4b <- rep(0, P4b); prior_sd_4b   <- rep(1000, P4b)
+sigma_prior_sd <- 1000
+
+# Set up datalists for each model
+data_list_1a <- list(
+  N = N1a, P = P1a, X = X1a, y = y1,
+  prior_mean = prior_mean_1a,
+  prior_sd = prior_sd_1a,
+  sigma_prior_sd = sigma_prior_sd
+)
+data_list_1b <- list(
+  N = N1b, P = P1b, X = X1b, y = y1,
+  prior_mean = prior_mean_1b,
+  prior_sd = prior_sd_1b,
+  sigma_prior_sd = sigma_prior_sd
+)
+data_list_2a <- list(
+  N = N2a, P = P2a, X = X2a, y = y2,
+  prior_mean = prior_mean_2a,
+  prior_sd = prior_sd_2a,
+  sigma_prior_sd = sigma_prior_sd
+)
+data_list_2b <- list(
+  N = N2b, P = P2b, X = X2b, y = y2,
+  prior_mean = prior_mean_2b,
+  prior_sd = prior_sd_2b,
+  sigma_prior_sd = sigma_prior_sd
+)
+data_list_3a <- list(
+  N = N3a, P = P3a, X = X3a, y = y3,
+  prior_mean = prior_mean_3a,
+  prior_sd = prior_sd_3a,
+  sigma_prior_sd = sigma_prior_sd
+)
+data_list_3b <- list(
+  N = N3b, P = P3b, X = X3b, y = y3,
+  prior_mean = prior_mean_3b,
+  prior_sd = prior_sd_3b,
+  sigma_prior_sd = sigma_prior_sd
+)
+data_list_4a <- list(
+  N = N4a, P = P4a, X = X4a, y = y4,
+  prior_mean = prior_mean_4a,
+  prior_sd = prior_sd_4a,
+  sigma_prior_sd = sigma_prior_sd
+)
+data_list_4b <- list(
+  N = N4b, P = P4b, X = X4b, y = y4,
+  prior_mean = prior_mean_4b,
+  prior_sd = prior_sd_4b,
+  sigma_prior_sd = sigma_prior_sd
+)
+```
+```{r bayesian, echo=FALSE, message=FALSE, results='hide', warning=FALSE, cache=TRUE}
+## Bayesian models
+fit_vload <- mod$sample(data = data_list_1a, chains = 4, iter_warmup = 2000, iter_sampling = 5000, seed = 123)
+fit_cd4 <- mod$sample(data = data_list_2a, chains = 4, iter_warmup = 2000, iter_sampling = 5000, seed = 123)
+fit_phys <- mod$sample(data = data_list_3a, chains = 4, iter_warmup = 2000, iter_sampling = 5000, seed = 123)
+fit_ment <- mod$sample(data = data_list_4a, chains = 4, iter_warmup = 2000, iter_sampling = 5000, seed = 123)
+
+## Bayesian models with adherence
+fit_vload_adh <- mod$sample(data = data_list_1b, chains = 4, iter_warmup = 2000, iter_sampling = 5000, seed = 123)
+fit_cd4_adh <- mod$sample(data = data_list_2b, chains = 4, iter_warmup = 2000, iter_sampling = 5000, seed = 123)
+fit_phys_adh <- mod$sample(data = data_list_3b, chains = 4, iter_warmup = 2000, iter_sampling = 5000, seed = 123)
+fit_ment_adh <- mod$sample(data = data_list_4b, chains = 4, iter_warmup = 2000, iter_sampling = 5000, seed = 123)
+
+## View model outputs
+fit_vload
+fit_vload_adh
+fit_cd4
+fit_cd4_adh
+fit_phys
+fit_phys_adh
+fit_ment
+fit_ment_adh
+```
+```{r bayes_tables, echo=FALSE, message=FALSE, results='hide', warning=FALSE, cache=TRUE}
+summarize_stan_beta2 <- function(fit, threshold) { # Function to extract Bayesian output
+  draws <- fit$draws()
+    # Extract full posterior draws
+  draws_mat <- as_draws_matrix(draws)
+    # Convert draws to matrix form for indexing
+  vals <- as.numeric(draws_mat[, "beta[2]"])
+    # Pull posterior samples  
+  hpd <- hdi(vals, ci = 0.95)
+    # Calculate HPDI
+  
+  tibble(
+    Parameter = "beta[2]",
+    PM = mean(vals),
+    HPDI_2.5 = hpd[1],
+    HPDI_97.5 = hpd[2],
+    PP = mean(abs(vals) > threshold)
+      # Calcualte posterior probability based on clinically meaningful thresholds
+  ) # Return results as a tibble
+}
+
+model_list <- list(
+  `Viral Load (log10 HIV copies/mL blood)` = fit_vload,
+  `Viral Load (log10 HIV copies/mL blood)_adh` = fit_vload_adh,
+  `CD4+ T Cell Count` = fit_cd4,
+  `CD4+ T Cell Count_adh` = fit_cd4_adh,
+  `Physical Quality of Life (SF-36 Aggregate)` = fit_phys,
+  `Physical Quality of Life (SF-36 Aggregate)_adh` = fit_phys_adh,
+  `Mental Quality of Life (SF-36 Aggregate)` = fit_ment,
+  `Mental Quality of Life (SF-36 Aggregate)_adh` = fit_ment_adh
+) # List of Bayesian models, renamed for tables
+
+thresholds <- c(0.5, 0.5, 50, 50, 2, 2, 2, 2)
+  # Clinically meaningful thresholds
+
+tab_bayes <- purrr::map2_df(model_list, thresholds, summarize_stan_beta2, .id = "Model") %>%
+    # Apply function to each model
+  mutate(
+    HPDI = sprintf("(%0.3f, %0.3f)", HPDI_2.5, HPDI_97.5)
+  ) %>% # Combine HPDIs and limit to 3 decimal places
+  select(Outcome = Model, `Posterior Mean` = PM, `95% HPDI` = HPDI, `Posterior Probability` = PP)
+    # Select and rename final columns
+
+tab_bayes_adh <- purrr::map2_df(model_list, thresholds, summarize_stan_beta2, .id = "Model") %>%
+    # Apply function to each model
+  mutate(
+    Outcome = sub("_adh$", "", Model),
+    adh     = grepl("_adh$", Model),
+      # Select only results from adherence models
+    HPDI    = sprintf("(%0.3f, %0.3f)", HPDI_2.5, HPDI_97.5)
+      # Combine HPDIs and limit to 3 decimal places
+  ) %>%
+  select(Outcome, adh, PM, HPDI, PP) %>%
+    # Select relevant columns
+  pivot_wider(
+    names_from  = adh,
+    values_from = c(PM, HPDI, PP)
+  ) %>% # Pivot to wide and add subscript to note adh 
+  rename(
+    PM        = PM_FALSE,
+    PM_adh    = PM_TRUE,
+    HPDI      = HPDI_FALSE,
+    HPDI_adh  = HPDI_TRUE,
+    PP        = PP_FALSE,
+    PP_adh    = PP_TRUE
+  ) %>% # Rename columns 
+  mutate(
+    Percent_Change = 100 * (PM_adh - PM) / abs(PM)
+  ) %>% # Calculate impact of adherence
+  select(Outcome, `Posterior Mean` = PM_adh, `Change in PM (%)` = Percent_Change, `95% HPDI` = HPDI_adh, `Posterior Probability` = PP_adh)
+    # Select and rename final columns
+```
+```{r comb_tables, echo=FALSE, message=FALSE, results='hide', warning=FALSE, cache=TRUE}
+tab_comb <- dplyr::left_join(tab_freq, tab_bayes, by = "Outcome") %>%
+    # Combine two tables
+  filter(!grepl("_adh$", Outcome)) %>%
+    # Filter to models without adherence
+  gt() %>%
+    # Convert to gt table
+  tab_spanner(
+    label = "Frequentist",
+    columns = c(`Point Estimate`, `95% CI`, `Unadjusted P-Value`)
+  ) %>% # Add Frequentist label
+  tab_spanner(
+    label = "Bayesian",
+    columns = c(`Posterior Mean`, `95% HPDI`, `Posterior Probability`)
+  ) %>% # Add Bayesian label
+  fmt_number(
+    columns = c(`Point Estimate`, `Unadjusted P-Value`, `Posterior Mean`, `Posterior Probability`),
+    decimals = 3
+  ) %>% # Round estimates
+  tab_header(
+    title = "Comparison of Frequentist and Bayesian Estimates for Associations Between Hard Drug Use and Clinical Outcomes"
+  ) %>% 
+  tab_footnote(
+    footnote = "Comparison of Frequentist and Bayesian regression estimates for the association between baseline hard drug use and year‑2 outcomes. All models adjust for baseline outcome values, age, BMI, smoking status, education, and race. Bayesian models use weakly informative Normal(0, 1000) priors for regression coefficients and half‑Normal(0, 1000) priors for residual SD." 
+  ) 
+
+tab_adh <- dplyr::left_join(tab_freq_adh, tab_bayes_adh, by = "Outcome") %>%
+    # Combine two tables
+  gt() %>%
+    # Convert to gt table
+  tab_spanner(
+    label = "Frequentist",
+    columns = c(`Point Estimate`, `Change in PE (%)`, `95% CI`, `Unadjusted P-Value`)
+  ) %>% # Add Frequentist label
+  tab_spanner(
+    label = "Bayesian",
+    columns = c(`Posterior Mean`, `Change in PM (%)`, `95% HPDI`, `Posterior Probability`)
+  ) %>% # Add Bayesian label
+  fmt_number(
+    columns = c(`Point Estimate`, `Change in PE (%)`, `Unadjusted P-Value`, `Posterior Mean`, `Change in PM (%)`, `Posterior Probability`),
+    decimals = 3
+  ) %>% # Round estimates
+  tab_header(
+    title = "Impact of Adherence Adjustment on Frequentist and Bayesian Estimates for Associations Between Hard Drug Use and Clinical Outcomes"
+  ) %>%
+  tab_footnote(
+    footnote = "Frequentist and Bayesian regression estimates for the association between baseline hard drug use and year‑2 outcomes after adjusting for adherence. All models also adjust for baseline outcome values, age, BMI, smoking status, education, and race. Percent change reflects the relative difference between adherence‑adjusted and non‑adjusted models, calculated for both the frequentist point estimate and the Bayesian posterior mean. Bayesian models use weakly informative Normal(0, 1000) priors for regression coefficients and half‑Normal(0, 1000) priors for residual SD." 
+  )
+```
+```{r fig_raw, echo=FALSE, message=FALSE, results='hide', warning=FALSE, cache=TRUE}
+dat_plot <- dat_wide %>%
+  select(
+    hard_drugs_0,
+    log10VLOAD_2,
+    LEU3N_2,
+    AGG_PHYS_2,
+    AGG_MENT_2
+  ) %>% # Select outcomes and drugs
+  pivot_longer(
+    cols = -hard_drugs_0,
+    names_to = "Outcome",
+    values_to = "Value"
+  ) %>% # Pivot to long
+  mutate(
+    hard_drugs_0 = factor(hard_drugs_0, labels = c("No Hard Drugs", "Hard Drugs")),
+    Outcome = recode(
+      Outcome,
+      log10VLOAD_2 = "Viral Load (log10 HIV copies/mL blood)",
+      LEU3N_2      = "CD4+ T Cell Count",
+      AGG_PHYS_2   = "Physical Quality of Life (SF-36 Aggregate)",
+      AGG_MENT_2   = "Mental Quality of Life (SF-36 Aggregate)"
+    )
+  ) # Rename for figure
+
+fig1 <- ggplot(dat_plot, aes(x = hard_drugs_0, y = Value)) +
+    # Plot outcomes by baseline hard drug use
+  geom_violin(fill = "gray85", color = "gray60") +
+    # Raw data as violin
+  geom_jitter(alpha = 0.25, width = 0.15, color = "gray40") +
+    # Violin transparent
+  facet_wrap(~ Outcome, scales = "free_y") +
+    # Facet by outcome
+  labs(
+    x = "Hard Drug Use at Baseline",
+    y = "Outcome Value",
+    title = "Observed 2nd Year Outcomes by Baseline Hard Drug Use"
+  ) +
+  theme_bw() +
+  theme(
+    strip.text = element_text(size = 11),
+    legend.position = "none"
+  )
+```
+```{r fig_models, echo=FALSE, message=FALSE, results='hide', warning=FALSE, cache=TRUE}
+forest_df <-
+  purrr::map_df(mod_list, summarize_lm_beta2, .id = "Model") %>%
+    # Frequentist
+  mutate(
+    Adjustment = ifelse(grepl("_adh$", Model), "Adherence-adjusted", "Unadjusted"),
+    Outcome = sub("_adh$", "", Model),
+    Method = "Frequentist"
+  ) %>% # Add labels 
+  transmute(
+    Outcome,
+    Method,
+    Adjustment,
+    Estimate = PE,
+    lower = CI_2.5,
+    upper = CI_97.5
+  ) %>% # Rename 
+  
+  bind_rows(
+    purrr::map2_df(model_list, thresholds, summarize_stan_beta2, .id = "Model") %>%
+        # Bayesian
+      mutate(
+        Adjustment = ifelse(grepl("_adh$", Model), "Adherence-adjusted", "Unadjusted"),
+        Outcome = sub("_adh$", "", Model),
+        Method = "Bayesian"
+      ) %>% # Add labels
+      transmute(
+        Outcome,
+        Method,
+        Adjustment,
+        Estimate = PM,
+        lower = HPDI_2.5,
+        upper = HPDI_97.5
+      ) # Rename
+  ) %>% # Add Bayesian outcomes
+  
+  mutate(
+    Outcome = recode(
+      Outcome,
+      log10VLOAD_2 = "Viral Load (log10 HIV copies/mL blood)",
+      LEU3N_2      = "CD4+ T Cell Count",
+      AGG_PHYS_2   = "Physical Quality of Life (SF-36 Aggregate)",
+      AGG_MENT_2   = "Mental Quality of Life (SF-36 Aggregate)"
+    ), # Rename outcomes
+    cm_diff = case_when(
+      Outcome == "Viral Load (log10 HIV copies/mL blood)" ~ 0.5,
+      Outcome == "CD4+ T Cell Count" ~ 50,
+      Outcome == "Physical Quality of Life (SF-36 Aggregate)" ~ 2,
+      Outcome == "Mental Quality of Life (SF-36 Aggregate)" ~ 2
+    ), # Add clinically meaningful differences
+    Outcome = factor(
+      Outcome,
+      levels = c(
+        "Viral Load (log10 HIV copies/mL blood)",
+        "CD4+ T Cell Count",
+        "Physical Quality of Life (SF-36 Aggregate)",
+        "Mental Quality of Life (SF-36 Aggregate)"
+      ) # Order facets
+    )
+  )
+
+fig2 <- ggplot(forest_df, aes(x = Estimate, y = Method, color = Method, shape = Adjustment)) +
+    # Forest plot of outcomes
+  geom_rect(
+    aes(
+      xmin = -cm_diff, xmax = cm_diff,
+      ymin = -Inf, ymax = Inf
+    ),
+    fill = "grey90", alpha = 0.3,
+    inherit.aes = FALSE
+  ) + # Add shaded area for clinical differences
+  geom_vline(xintercept = 0, linetype = "dashed") +
+    # Add line at 0
+  geom_point(size = 3, position = position_dodge(width = 0.5)) +
+    # Add outcomes
+  geom_errorbar(
+    aes(xmin = lower, xmax = upper),
+    width = 0.2,
+    position = position_dodge(width = 0.5)
+  ) + # Add intervals
+  facet_wrap(~ Outcome, scales = "free_x") +
+    # Facet by outcome
+  scale_shape_manual(values = c(
+    "Unadjusted" = 16,
+    "Adherence-adjusted" = 17
+  )) + # Add shapes based on adherence 
+  labs(
+    x = "Adjusted Effect of Baseline Hard Drug Use",
+    y = "",
+    title = "Adjusted Associations Between Baseline Hard Drug Use and 2nd Year Outcomes",
+    color = "Model Type",
+    shape = "Adjustment",
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "bottom",
+    strip.text = element_text(size = 11),
+  )
+```
 
 ## Introduction
 
