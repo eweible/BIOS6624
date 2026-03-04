@@ -12,6 +12,6 @@ Folder | Description
 ---|----------------------------------------------------------
 P0 | Project focuses on evaluating a novel saliva collection device to assess time accuracy, subject adherence, and patterns of cortisol and DHEA over time. 
 P1 | Project focuses on 2 year treatment response to HAART between subjects who report or do not report hard drug usage. 
-P2 | Not yet assigned
+P2 | Project develops an analysis plan and sample size justification for a research grant on the relationship between inflammation, AD pathology, and cognitive decline.
 P3 | Not yet assigned
 P4 | Not yet assigned
