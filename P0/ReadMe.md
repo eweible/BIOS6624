@@ -4,10 +4,8 @@ Details about the folders:
 
 File | Description
 ---|----------------------------------------------------------
-Admin | contains the scope of work and other administrative documents
-Background | contains the background information for the analysis
-Code | contains all R scripts for this project
-DataRaw | contain all raw data provided by investigators
-DataProcessed | contains the processed data used for analysis
-Dissemination | contains any materials produced for dissemination, ie. Abstracts, Posters, Papers
-Reports | contains all output, rmarkdown files and report
+Background    | Contains the background information for the analysis
+Code          | Contains all R scripts and R markdown for this project
+DataRaw       | Contain all raw data provided by investigators
+Dissemination | Contains presentation materials
+Reports       | Contains finalized reports and feedback
