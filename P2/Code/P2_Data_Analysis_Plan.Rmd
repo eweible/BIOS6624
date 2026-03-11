@@ -26,7 +26,58 @@ Ezra Weible[^1]
 
 ## Aim 1 Analysis Plan
 
-#### Aim 1A
+#### Hypothesis 1a: 
+
+- Outcome 1: Memory Consolidation (continuous)
+  - 1 year
+    - MST measure
+- Outcome 2: Cortical Thickness (continuous)
+  - 1 year
+- Predictors:
+  - Cytokines (continuous)
+    - Baseline
+      - TNF-alpha, IL-6 
+  - Chemokines (continuous)
+    - Baseline
+      - MCP-1, Eotaxin-1
+- Additional Covariates
+  - Required: age, sex, baseline outcome
+  - Plausible confounders: education, APOE, CDR at baseline, geriatric depression rating
+  - Supplemental covariates with likely correlation (add only if AIC improves and be cautious in interpreting): BMI, hypercholesterolemia, blood pressure, NSAID, immune-related health conditiions, cardiovascular risk
+- Alternative Hypothesis: for each outcome, $\beta_1 < 0$ 
+  - Higher baseline inflammation leads to worse cognition or thickness at 1 year
+  - Model with simple linear regression, with a separate model for each outcome.
+    - Fit separate models for each cytokine/chemokine due to potential correlations, have the joint model be exploratory. 
+    - Within this hypothesis, adjust with FDR
+  
+#### Hypothesis 1b: 
+
+- Outcome 1: Episodic Memory Outcomes (continuous)
+  - Change over 1 year
+    - 20' Delay, Total Correct
+    - Recognition, D-Prime
+    - 15' Delay, Total Correct
+    - Proportion Correct
+    - 1-Week Delay, Total Correct
+- Outcome 2: Cortical Thickness (continuous)
+  - Change over 1 year
+- Predictors:
+  - Cytokines (continuous)
+    - Change over 1 year
+      - TNF-alpha, CPN1, Eotaxin-1 MCP-1
+  - Chemokines (continuous)
+    - Change over 1 year
+      - MCP-1, Eotaxin-1
+- Additional Covariates
+  - Required: age, sex
+  - Plausible confounders: education, APOE, CDR at baseline, geriatric depression rating
+  - Supplemental covariates with likely correlation (add only if AIC improves and be cautious in interpreting): BMI, hypercholesterolemia, blood pressure, NSAID, immune-related health conditiions, cardiovascular risk
+- Alternative Hypothesis: for each outcome, $\beta_1 < 0$ 
+  - Greater increases in inflammatory markers leads to greater declines in cognition or thickness from baseline to 1 year.
+  - Model with simple linear regression, with a separate model for each outcome. 
+    - Fit separate models for each cytokine/chemokine due to potential correlations, have the joint model be exploratory. 
+Include all cytokines and chemokines in the model. 
+    - Within this hypothesis, adjust with FDR
 
 1. For each aim, the hypotheses you will be testing, including a description of the outcome(s) and predictor(s) of interest
 
@@ -34,11 +85,12 @@ Ezra Weible[^1]
 
 3. How you will approach/incorporate the other data/variables available besides the outcomes and predictors of interest
 
-#### Aim 1B
-
+  
 ## Aim 2 Analysis Plan
 
 ## Power Analysis Plan
+
+- For Aim 1, for each hypothesis, simplify to a correlation test as the regression for each outcome has a continuous variable of interest. Calculate a power of 80\% and use the maximum sample size provided to get a potential difference that can be identified. Assuming that the additional covariates (e.g. age, sex) are precision variables, this may allow for us to have greater power in truth. 
 
 4. What power/sample size calculations you will conduct for each of the hypotheses of interest
 
