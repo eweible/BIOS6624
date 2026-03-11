@@ -1,0 +1,49 @@
+---
+output:
+  bookdown::pdf_document2:
+    toc: false
+    number_sections: false
+documentclass: article
+geometry: margin=1in
+fontsize: 12pt
+linestretch: 2
+fig.cap: true
+header-includes:
+  - \usepackage{float}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- Title here: -->
+# \textit{Analysis Plan for HAART Outcomes by Drug Use}
+
+<!-- Name here: -->
+Ezra Weible[^1]
+
+[^1]: Biostatistics Masters Student, Colorado School of Public Health, CU Anschutz Medical Campus
+
+## Aim 1 Analysis Plan
+
+#### Aim 1A
+
+1. For each aim, the hypotheses you will be testing, including a description of the outcome(s) and predictor(s) of interest
+
+2. The over-all analysis approach you will be using for each hypothesis
+
+3. How you will approach/incorporate the other data/variables available besides the outcomes and predictors of interest
+
+#### Aim 1B
+
+## Aim 2 Analysis Plan
+
+## Power Analysis Plan
+
+4. What power/sample size calculations you will conduct for each of the hypotheses of interest
+
+5. Not required for interim, but will be required for final: thoughts on your approach to type I error control.
+
+Code Directory: https://github.com/eweible/BIOS6624.git
+
+File name: P2/Code/P2_Data_Analysis_Plan.Rmd
