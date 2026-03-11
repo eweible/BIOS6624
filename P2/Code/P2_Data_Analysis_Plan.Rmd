@@ -47,6 +47,7 @@ Ezra Weible[^1]
 - Alternative Hypothesis: for each outcome, $\beta_1 < 0$ 
   - Higher baseline inflammation leads to worse cognition or thickness at 1 year
   - Model with simple linear regression, with a separate model for each outcome.
+    - General outline: $Outcome_{Y1} = \beta_0 + \beta_1 Marker_{Y0} + \beta_2 Outcome_{Y0} + \beta_n covariates + \epsilon$
     - Fit separate models for each cytokine/chemokine due to potential correlations, have the joint model be exploratory. 
     - Within this hypothesis, adjust with FDR
   
@@ -74,19 +75,70 @@ Ezra Weible[^1]
   - Supplemental covariates with likely correlation (add only if AIC improves and be cautious in interpreting): BMI, hypercholesterolemia, blood pressure, NSAID, immune-related health conditiions, cardiovascular risk
 - Alternative Hypothesis: for each outcome, $\beta_1 < 0$ 
   - Greater increases in inflammatory markers leads to greater declines in cognition or thickness from baseline to 1 year.
-  - Model with simple linear regression, with a separate model for each outcome. 
-    - Fit separate models for each cytokine/chemokine due to potential correlations, have the joint model be exploratory. 
-Include all cytokines and chemokines in the model. 
+  - Model with simple linear regression, with a separate model for each outcome.
+    - General outline: $Outcome_{Y1-Y0} = \beta_0 + \beta_1 Marker_{Y1-Y0} + \beta_2 Outcome_{Y0} + \beta_n covariates + \epsilon$
+      - Fit separate models for each cytokine/chemokine due to potential correlations, have the joint model be exploratory. 
     - Within this hypothesis, adjust with FDR
 
-1. For each aim, the hypotheses you will be testing, including a description of the outcome(s) and predictor(s) of interest
-
-2. The over-all analysis approach you will be using for each hypothesis
-
-3. How you will approach/incorporate the other data/variables available besides the outcomes and predictors of interest
-
-  
 ## Aim 2 Analysis Plan
+
+#### Primary Hypothesis 
+
+- Outcome 1: Episodic Memory Outcomes (continuous)
+  - 1 year
+    - 20' Delay, Total Correct
+    - Recognition, D-Prime
+    - 15' Delay, Total Correct
+    - Proportion Correct
+    - 1-Week Delay, Total Correct
+- Outcome 2: Cortical Thickness (continuous)
+  - 1 year
+- Predictors:
+  - Amyloid deposition (continuous)
+    - Baseline
+  - Cytokines (continuous)
+    - Baseline
+      - TNF-alpha, IL-6 
+  - Chemokines (continuous)
+    - Baseline
+      - MCP-1, Eotaxin-1
+- Same potential covariates as Aim 1
+- Alternative Hypothesis: for each outcome, $\beta_3 < 0$ 
+  - The effect of inflammatory markers on decline is stronger at higher amyloid levels.
+  - Model with simple linear regression, with a separate model for each outcome.
+    - General outline: $Outcome_{Y1} = \beta_0 + \beta_1 Amyloid_{Y0} + \beta_2 Marker_{Y0} + \beta_3 Amyloid_{Y0}*Marker_{Y0} + \beta_n covariates + \epsilon$
+      - Fit separate models for each cytokine/chemokine due to potential correlations, have the joint model be exploratory. 
+    - Within this hypothesis, adjust with FDR
+
+      
+#### Secondary Hypothesis
+
+- Outcome 1: Episodic Memory Outcomes (continuous)
+  - Change over 1 year (aka adjust for baseline value)
+    - 20' Delay, Total Correct
+    - Recognition, D-Prime
+    - 15' Delay, Total Correct
+    - Proportion Correct
+    - 1-Week Delay, Total Correct
+- Outcome 2: Cortical Thickness (continuous)
+  - Change over 1 year (aka adjust for baseline value)
+- Predictors:
+  - Amyloid deposition (continuous)
+    - Baseline
+  - Cytokines (continuous)
+    - Change over 1 year
+      - TNF-alpha, IL-6 
+  - Chemokines (continuous)
+    - Change over 1 year
+      - MCP-1, Eotaxin-1
+- Same potential covariates as Aim 1
+- Alternative Hypothesis: for each outcome, $\beta_3 < 0$ 
+  - The effect of inflammatory markers on decline is stronger at higher amyloid levels.
+  - Model with simple linear regression, with a separate model for each outcome.
+    - General outline: $Outcome_{Y1-Y0} = \beta_0 + \beta_1 Amyloid_{Y0} + \beta_2 Marker_{Y1-Y0} + \beta_3 Amyloid_{Y0}*Marker_{Y1-Y0} + \beta_4 Outcome_{Y0} + \beta_n covariates + \epsilon$
+      - Fit separate models for each cytokine/chemokine due to potential correlations, have the joint model be exploratory. 
+    - Within this hypothesis, adjust with FDR
+
 
 ## Power Analysis Plan
 
