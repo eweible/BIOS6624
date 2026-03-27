@@ -6,4 +6,68 @@ date: "2026-03-04"
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(reshape2)
+dat_prelim <- read.csv(here::here("P2/DataRaw", "PrelimData.csv"))
 ```
+
+Correlations
+```{r}
+summary(dat_prelim)
+pairs(dat_prelim)
+
+# Correlations
+cor_matrix <- cor(dat_prelim, use = "pairwise.complete.obs")
+cor_matrix
+
+ggplot(melt(cor_matrix), aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(
+    limits = c(-1, 1)
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y = element_text(angle = 0),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank()
+  ) + 
+  labs(title = "Correlation heatmap",
+       x = "", y = "")
+```
+
+```{r}
+### Extract correlations of interest
+r_IL6_CT   <- cor(dat_prelim$IL_6,   dat_prelim$CORT_CNG3,   use = "pairwise.complete.obs")
+r_IL6_CVLT <- cor(dat_prelim$IL_6,   dat_prelim$CVLT_CNG3, use = "pairwise.complete.obs")
+r_MCP1_CT  <- cor(dat_prelim$MCP_1,  dat_prelim$CORT_CNG3,   use = "pairwise.complete.obs")
+r_MCP1_CVLT<- cor(dat_prelim$MCP_1,  dat_prelim$CVLT_CNG3, use = "pairwise.complete.obs")
+
+### Convert to partial R2 (approximate)
+# Assume baseline–Year1 correlation ~0.8 (range 0.6–0.9 in sensitivity)
+baseline_corr <- 0.8
+adj_factor <- (1 - baseline_corr^2)
+
+partial_R2_IL6_CT <- r_IL6_CT^2 * adj_factor
+partial_R2_IL6_CVLT <- r_IL6_CVLT^2 * adj_factor
+
+### Power calculations
+library(pwr)
+
+# Example for Aim 1
+f2 <- partial_R2_IL6_CT / (1 - partial_R2_IL6_CT)
+pwr.f2.test(u = 1,
+            v = 125 - 1 - 5,
+            f2 = f2,
+            sig.level = 0.05)
+
+# Example for Aim 2 interaction
+partial_R2_int <- 0.02  # plausible range from literature
+f2_int <- partial_R2_int / (1 - partial_R2_int)
+
+pwr.f2.test(u = 1,
+            v = 125 - 1 - 6,
+            f2 = f2_int,
+            sig.level = 0.05)
+```
+
