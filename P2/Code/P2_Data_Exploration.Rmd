@@ -36,38 +36,148 @@ ggplot(melt(cor_matrix), aes(Var1, Var2, fill = value)) +
        x = "", y = "")
 ```
 
+There is a reasonable range of correlations from 0.2-0.7 based on the preliminary data, so that is what will be focused on for the power analysis. We will also look at two alpha correction strategies (based on the number of inflammatory markers or the number of outcomes of the aim 1)
 ```{r}
-### Extract correlations of interest
-r_IL6_CT   <- cor(dat_prelim$IL_6,   dat_prelim$CORT_CNG3,   use = "pairwise.complete.obs")
-r_IL6_CVLT <- cor(dat_prelim$IL_6,   dat_prelim$CVLT_CNG3, use = "pairwise.complete.obs")
-r_MCP1_CT  <- cor(dat_prelim$MCP_1,  dat_prelim$CORT_CNG3,   use = "pairwise.complete.obs")
-r_MCP1_CVLT<- cor(dat_prelim$MCP_1,  dat_prelim$CVLT_CNG3, use = "pairwise.complete.obs")
+library(powertools)
 
-### Convert to partial R2 (approximate)
-# Assume baseline–Year1 correlation ~0.8 (range 0.6–0.9 in sensitivity)
-baseline_corr <- 0.8
-adj_factor <- (1 - baseline_corr^2)
+r_vals <- seq(0.2, 0.5, by = 0.05)
+  # Correlation range
+N <- 175
+  # Sample size
+alpha_markers <- 0.05 / 4   
+alpha_outcomes <- 0.05 / 6  
+alpha_all <- 0.05 / 24
+  # Alpha levels
+power_results <- data.frame(
+  r = r_vals,
+  power_alpha_markers = sapply(r_vals, function(r)
+    corr.1samp(N = N, rho0 = 0, rhoA = r, alpha = alpha_markers, sides = 2)),
+  power_alpha_outcomes = sapply(r_vals, function(r)
+    corr.1samp(N = N, rho0 = 0, rhoA = r, alpha = alpha_outcomes, sides = 2)),
+  power_alpha_all = sapply(r_vals, function(r)
+    corr.1samp(N = N, rho0 = 0, rhoA = r, alpha = alpha_all, sides = 2))
+) # Power calculation
 
-partial_R2_IL6_CT <- r_IL6_CT^2 * adj_factor
-partial_R2_IL6_CVLT <- r_IL6_CVLT^2 * adj_factor
+power_results
+```
 
-### Power calculations
-library(pwr)
+```{r}
+r_vals <- seq(0.2, 0.7, by = 0.1)
 
-# Example for Aim 1
-f2 <- partial_R2_IL6_CT / (1 - partial_R2_IL6_CT)
-pwr.f2.test(u = 1,
-            v = 125 - 1 - 5,
-            f2 = f2,
-            sig.level = 0.05)
 
-# Example for Aim 2 interaction
-partial_R2_int <- 0.02  # plausible range from literature
-f2_int <- partial_R2_int / (1 - partial_R2_int)
+ratios <- list(
+  "50_50" = c(0.5, 0.5),
+  "60_40" = c(0.6, 0.4),
+  "70_30" = c(0.7, 0.3)
+) # Amyloid group ratios
 
-pwr.f2.test(u = 1,
-            v = 125 - 1 - 6,
-            f2 = f2_int,
-            sig.level = 0.05)
+corr_pairs <- expand.grid(rho_low = r_vals, rho_high = r_vals)
+corr_pairs <- subset(corr_pairs, rho_high > rho_low)
+  # Correlation pairs where the interaction implies a difference
+
+compute_power <- function(N1, N2, rho_low, rho_high, alpha) {
+  corr.2samp(
+    n1 = N1,
+    n.ratio = N2/N1,
+    rho1 = rho_low,
+    rho2 = rho_high,
+    alpha = alpha,
+    sides = 2
+  )
+} # Power function
+
+results_list <- list()
+
+for (ratio_name in names(ratios)) {
+  
+  props <- ratios[[ratio_name]]
+  N1 <- round(N * props[1])
+  N2 <- N - N1
+  
+  tmp <- data.frame(
+    rho_low  = corr_pairs$rho_low,
+    rho_high = corr_pairs$rho_high,
+    diff     = corr_pairs$rho_high - corr_pairs$rho_low,
+    
+    power_alpha_markers = mapply(
+      compute_power,
+      N1 = N1,
+      N2 = N2,
+      rho_low  = corr_pairs$rho_low,
+      rho_high = corr_pairs$rho_high,
+      alpha = alpha_markers
+    ),
+    
+    power_alpha_outcomes = mapply(
+      compute_power,
+      N1 = N1,
+      N2 = N2,
+      rho_low  = corr_pairs$rho_low,
+      rho_high = corr_pairs$rho_high,
+      alpha = alpha_outcomes
+    ),
+    
+    power_alpha_all = mapply(
+      compute_power,
+      N1 = N1,
+      N2 = N2,
+      rho_low  = corr_pairs$rho_low,
+      rho_high = corr_pairs$rho_high,
+      alpha = alpha_all
+    )
+  )
+  
+  results_list[[ratio_name]] <- tmp
+}
+
+### Example: view 50/50 split
+results_list$`50_50`
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Combine all results into one data frame
+plot_df <- bind_rows(
+  lapply(names(results_list), function(name) {
+    results_list[[name]] %>% mutate(ratio = name)
+  })
+)
+
+# Convert to long format
+plot_long <- plot_df %>%
+  pivot_longer(
+    cols = starts_with("power_"),
+    names_to = "alpha_type",
+    values_to = "power"
+  ) %>%
+  mutate(
+    alpha_type = recode(alpha_type,
+      "power_alpha_markers"  = "0.05/4",
+      "power_alpha_outcomes" = "0.05/6",
+      "power_alpha_all"      = "0.05/24"
+    ),
+    power = power * 100   # convert to percent if needed
+  )
+
+# Main plot
+ggplot(plot_long, aes(x = rho_high, y = power, color = alpha_type)) +
+  geom_line(size = 1.1) +
+  geom_hline(yintercept = 75, linetype = "dashed") +
+  facet_grid(rho_low ~ ratio) +
+  labs(
+    title = "Power vs Amyloid+ Correlation",
+    x = "Amyloid+ Correlation (ρ_high)",
+    y = "Power (%)",
+    color = "Alpha Level"
+  ) +
+  scale_color_manual(values = c("red", "blue", "darkgreen")) +
+  theme_minimal(base_size = 14) +
+  theme(
+    strip.text = element_text(size = 14, face = "bold"),
+    legend.position = "bottom"
+  )
 ```
 
