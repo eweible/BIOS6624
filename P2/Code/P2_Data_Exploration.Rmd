@@ -8,6 +8,9 @@ date: "2026-03-04"
 knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2)
 library(reshape2)
+library(dplyr)
+library(tidyr)
+library(powertools)
 dat_prelim <- read.csv(here::here("P2/DataRaw", "PrelimData.csv"))
 ```
 
@@ -38,8 +41,6 @@ ggplot(melt(cor_matrix), aes(Var1, Var2, fill = value)) +
 
 There is a reasonable range of correlations from 0.2-0.7 based on the preliminary data, so that is what will be focused on for the power analysis. We will also look at two alpha correction strategies (based on the number of inflammatory markers or the number of outcomes of the aim 1)
 ```{r}
-library(powertools)
-
 r_vals <- seq(0.2, 0.5, by = 0.05)
   # Correlation range
 N <- 175
@@ -62,87 +63,60 @@ power_results
 ```
 
 ```{r}
-r_vals <- seq(0.2, 0.7, by = 0.1)
+N <- 175
+r_high_vals <- seq(0.2, 0.7, by = 0.1)   
+  # Plausible high-amyloid correlations
 
+alpha_markers <- 0.05 / 4
+alpha_outcomes <- 0.05 / 6
+alpha_all <- 0.05 / 24
+
+rho_diffs <- seq(0.1, 0.5, by = 0.1)
+  # Small to large interaction effects
 
 ratios <- list(
-  "50_50" = c(0.5, 0.5),
-  "60_40" = c(0.6, 0.4),
-  "70_30" = c(0.7, 0.3)
-) # Amyloid group ratios
-
-corr_pairs <- expand.grid(rho_low = r_vals, rho_high = r_vals)
-corr_pairs <- subset(corr_pairs, rho_high > rho_low)
-  # Correlation pairs where the interaction implies a difference
+  "30_70" = c(0.30, 0.70),
+  "40_60" = c(0.40, 0.60),
+  "50_50" = c(0.50, 0.50),
+  "60_40" = c(0.60, 0.40)
+) # Amyloid+:amyloid- ratios
 
 compute_power <- function(N1, N2, rho_low, rho_high, alpha) {
-  corr.2samp(
-    n1 = N1,
-    n.ratio = N2/N1,
-    rho1 = rho_low,
-    rho2 = rho_high,
-    alpha = alpha,
-    sides = 2
-  )
-} # Power function
-
-results_list <- list()
-
-for (ratio_name in names(ratios)) {
-  
-  props <- ratios[[ratio_name]]
-  N1 <- round(N * props[1])
-  N2 <- N - N1
-  
-  tmp <- data.frame(
-    rho_low  = corr_pairs$rho_low,
-    rho_high = corr_pairs$rho_high,
-    diff     = corr_pairs$rho_high - corr_pairs$rho_low,
-    
-    power_alpha_markers = mapply(
-      compute_power,
-      N1 = N1,
-      N2 = N2,
-      rho_low  = corr_pairs$rho_low,
-      rho_high = corr_pairs$rho_high,
-      alpha = alpha_markers
-    ),
-    
-    power_alpha_outcomes = mapply(
-      compute_power,
-      N1 = N1,
-      N2 = N2,
-      rho_low  = corr_pairs$rho_low,
-      rho_high = corr_pairs$rho_high,
-      alpha = alpha_outcomes
-    ),
-    
-    power_alpha_all = mapply(
-      compute_power,
-      N1 = N1,
-      N2 = N2,
-      rho_low  = corr_pairs$rho_low,
-      rho_high = corr_pairs$rho_high,
-      alpha = alpha_all
-    )
-  )
-  
-  results_list[[ratio_name]] <- tmp
+  corr.2samp(n1 = N1, n.ratio = N2 / N1, rho1 = rho_low, rho2 = rho_high, alpha = alpha)
 }
-
-### Example: view 50/50 split
-results_list$`50_50`
+results <- list()
+for (ratio_name in names(ratios)) {
+  props <- ratios[[ratio_name]]
+  N_high <- round(N * props[1])   
+    # Amyloid+
+  N_low  <- N - N_high            
+    # Amyloid−
+  tmp_list <- list()
+  for (rho_high in r_high_vals) {
+    for (d in rho_diffs) {
+      rho_low <- rho_high - d
+      if (rho_low < 0 | rho_low > 0.99) next
+        # Skip invalid correlations
+      tmp_list[[length(tmp_list) + 1]] <- data.frame(
+        ratio = ratio_name,
+        rho_high = rho_high,
+        rho_low = rho_low,
+        diff = d,
+        power_alpha_markers = compute_power(N_low, N_high, rho_low, rho_high, alpha_markers),
+        power_alpha_outcomes = compute_power(N_low, N_high, rho_low, rho_high, alpha_outcomes),
+        power_alpha_all = compute_power(N_low, N_high, rho_low, rho_high, alpha_all)
+      )}}
+  results[[ratio_name]] <- do.call(rbind, tmp_list)
+} # Loop over ratios * r_high * delta_rho * alpha
+results$`50_50`
+  # Example results
 ```
 
 ```{r}
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-
 # Combine all results into one data frame
 plot_df <- bind_rows(
-  lapply(names(results_list), function(name) {
-    results_list[[name]] %>% mutate(ratio = name)
+  lapply(names(results), function(name) {
+    results[[name]] %>% mutate(ratio = name)
   })
 )
 
@@ -159,14 +133,14 @@ plot_long <- plot_df %>%
       "power_alpha_outcomes" = "0.05/6",
       "power_alpha_all"      = "0.05/24"
     ),
-    power = power * 100   # convert to percent if needed
+    power = power * 100 
   )
 
 # Main plot
 ggplot(plot_long, aes(x = rho_high, y = power, color = alpha_type)) +
   geom_line(size = 1.1) +
   geom_hline(yintercept = 75, linetype = "dashed") +
-  facet_grid(rho_low ~ ratio) +
+  facet_grid(diff ~ ratio) +
   labs(
     title = "Power vs Amyloid+ Correlation",
     x = "Amyloid+ Correlation (ρ_high)",
@@ -179,5 +153,42 @@ ggplot(plot_long, aes(x = rho_high, y = power, color = alpha_type)) +
     strip.text = element_text(size = 14, face = "bold"),
     legend.position = "bottom"
   )
+
+summary_80 <- plot_long %>%
+  group_by(ratio, diff, alpha_type) %>%
+  # keep only scenarios with at least 80% power
+  filter(power >= 80) %>%
+  # among those, find the smallest rho_high that achieves it
+  slice_min(rho_high, with_ties = FALSE) %>%
+  ungroup() %>%
+  arrange(ratio, diff, alpha_type)
+
+summary_80
+
+summary_80_wide <- summary_80 %>%
+  select(ratio, diff, alpha_type, rho_high) %>%
+  pivot_wider(
+    names_from  = alpha_type,
+    values_from = rho_high,
+    names_prefix = "rho_high_at_80pct_"
+  ) %>%
+  arrange(ratio, diff)
+
+summary_80_wide
 ```
+
+- Table long: given a specific amyloid+:amyloid- ratio, a specific interaction size, and a specific alpha level, what is the smallest amyloid+ correlation that gives at least 80\% power? 
+- Row 1: amyloid+/amyloid- split is 30/70\%. Assumed interaction effect size of 0.6=5, with the strictest alpha of 0.05/24, you need the amyloid+ correlation to be 0.7 (and thus the amyloid- correlation of 0.2) to reach 80% power. \
+- Row 2: With a more lenient alpha, you need a smaller amyloid+ correlation of 0.6 to reach 80% power
+- Row 4: When the effect size is smaller (change in rho of 0.4), then you need a stronger amyloid+ correlation of 0.7 to get 80\% power at a more lenient alpha.
+- Across all rows, more balanced groups give higher power, bigger interactions (diff) are easier to detect, and stricter alphas requier larger amyloid+ correlations. 
+
+- Table wide: each column gives you the min amyloid+ correlation (rho_high) needed to achieve at least 80\% power at a specific alpha level. If NA, then even the largest rho_high was not enough. 
+- 30/70 split is hard to power, need strong correlations 
+- Moderate interactions (<=0.4) are not detectable under strict alpha
+- 40/60 split is easier to power with a strong interaction (0.5) and it is detectable even with moderate correlations, especially under looser alphas
+- 50/50 split is easiest to power (balanced sample), but can't power small effects under strict alpha. 
+
+Across plausible amyloid prevalence scenarios, we achieve $\geq 80\%$ power for detecting large interaction effects ($\Delta \rho = 0.5$) when the amyloid+ correlation is at least 0.50–0.60 under $\alpha = 0.05/4$ or $0.05/6$. Under stricter correction ($\alpha = 0.05/24$), only strong correlations ($\rho_{high} \geq 0.70$) provide adequate power. Moderate interaction effects ($\Delta \rho = 0.4$) require $\rho_{high} \geq 0.70$ and do not reach 80\% power under $\alpha = 0.05/24$.
+
 
