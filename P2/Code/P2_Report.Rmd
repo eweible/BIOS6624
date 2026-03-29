@@ -14,6 +14,15 @@ header-includes:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(reshape2)
+library(dplyr)
+library(tidyr)
+library(powertools)
+library(gt)
+library(scales)
+library(stringr)
+dat_prelim <- read.csv(here::here("P2/DataRaw", "PrelimData.csv"))
 ```
 
 <!-- Title here: -->
@@ -24,11 +33,268 @@ Ezra Weible[^1]
 
 [^1]: Biostatistics Masters Student, Colorado School of Public Health, CU Anschutz Medical Campus
 
+```{r correlations, echo=FALSE}
+cor_matrix <- cor(dat_prelim, use = "pairwise.complete.obs")
+  # Correlations
+
+fig1 <- ggplot(melt(cor_matrix), aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(
+    limits = c(-1, 1)
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y = element_text(angle = 0),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank()
+  ) + 
+  labs(title = "Correlation heatmap",
+       x = "", y = "") # Correlation visualization
+```
+```{r aim1_power, echo=FALSE}
+r_vals <- seq(0.2, 0.5, by = 0.05)
+  # Correlation range
+N <- 175
+  # Sample size
+alpha_markers <- 0.05 / 4   
+alpha_outcomes <- 0.05 / 6  
+alpha_all <- 0.05 / 24
+  # Alpha levels
+aim1_results <- data.frame(
+  r = r_vals,
+  power_alpha_markers = sapply(r_vals, function(r)
+    corr.1samp(N = N, rho0 = 0, rhoA = r, alpha = alpha_markers, sides = 2)),
+  power_alpha_outcomes = sapply(r_vals, function(r)
+    corr.1samp(N = N, rho0 = 0, rhoA = r, alpha = alpha_outcomes, sides = 2)),
+  power_alpha_all = sapply(r_vals, function(r)
+    corr.1samp(N = N, rho0 = 0, rhoA = r, alpha = alpha_all, sides = 2))
+) # Power calculation
+
+aim1_table <- aim1_results %>% 
+  mutate(
+    power_alpha_markers = round(power_alpha_markers, 3),
+    power_alpha_outcomes = round(power_alpha_outcomes, 3),
+    power_alpha_all = round(power_alpha_all, 3)
+  ) %>% # Round digits
+  gt() %>% # Convert to gt
+  tab_header(
+    title = "Power to Detect Correlations Across \u03B1 Levels",
+    subtitle = "N = 175; Two-sided tests; Adjusted \u03B1 for markers, outcomes, and all tests"
+  ) %>% # Labels
+  cols_label(
+    r = "Correlation (r)",
+    power_alpha_markers = "Power (\u03B1 = 0.05/4)",
+    power_alpha_outcomes = "Power (\u03B1 = 0.05/6)",
+    power_alpha_all = "Power (\u03B1 = 0.05/24)"
+  ) %>% 
+  fmt_percent(
+    columns = starts_with("power"),
+    decimals = 1
+  ) %>% 
+  data_color(
+    columns = starts_with("power"),
+    fn = scales::col_numeric(
+      palette = c("#f7fbff", "#6baed6", "#08306b"),
+      domain = c(0, 1)
+    )
+  ) %>% 
+  tab_options(
+    table.font.size = px(14),
+    data_row.padding = px(6),
+    heading.align = "center"
+  )
+```
+```{r aim2_power, echo=FALSE}
+N <- 175
+r_high_vals <- seq(0.2, 0.7, by = 0.1)   
+  # Plausible high-amyloid correlations
+alpha_markers <- 0.05 / 4
+alpha_outcomes <- 0.05 / 6
+alpha_all <- 0.05 / 24
+  # Alpha levels
+rho_diffs <- seq(0.1, 0.5, by = 0.1)
+  # Small to large interaction effects
+ratios <- list(
+  "30_70" = c(0.30, 0.70),
+  "40_60" = c(0.40, 0.60),
+  "50_50" = c(0.50, 0.50),
+  "60_40" = c(0.60, 0.40)
+) # Amyloid+:amyloid- ratios
+
+compute_power <- function(N1, N2, rho_low, rho_high, alpha) {
+  corr.2samp(n1 = N1, n.ratio = N2 / N1, rho1 = rho_low, rho2 = rho_high, alpha = alpha)
+} # Power calculation
+
+results <- list()
+for (ratio_name in names(ratios)) {
+  props <- ratios[[ratio_name]]
+  N_high <- round(N * props[1])   
+    # Amyloid+
+  N_low  <- N - N_high            
+    # Amyloid−
+  tmp_list <- list()
+  for (rho_high in r_high_vals) {
+    for (d in rho_diffs) {
+      rho_low <- rho_high - d
+      if (rho_low < 0 | rho_low > 0.99) next
+        # Skip invalid correlations
+      tmp_list[[length(tmp_list) + 1]] <- data.frame(
+        ratio = ratio_name,
+        rho_high = rho_high,
+        rho_low = rho_low,
+        diff = d,
+        power_alpha_markers = compute_power(N_low, N_high, rho_low, rho_high, alpha_markers),
+        power_alpha_outcomes = compute_power(N_low, N_high, rho_low, rho_high, alpha_outcomes),
+        power_alpha_all = compute_power(N_low, N_high, rho_low, rho_high, alpha_all)
+      )}}
+  results[[ratio_name]] <- do.call(rbind, tmp_list)
+} # Loop over ratios * r_high * delta_rho * alpha
+```
+```{r aim2_visualizations, echo=FALSE}
+# Combine all results into one data frame
+plot_df <- bind_rows(
+  lapply(names(results), function(name) {
+    results[[name]] %>% mutate(ratio = name)
+  })
+)
+
+# Convert to long format
+plot_long <- plot_df %>%
+  pivot_longer(
+    cols = starts_with("power_"),
+    names_to = "alpha_type",
+    values_to = "power"
+  ) %>%
+  mutate(
+    alpha_type = recode(alpha_type,
+      "power_alpha_markers"  = "0.05/4",
+      "power_alpha_outcomes" = "0.05/6",
+      "power_alpha_all"      = "0.05/24"
+    ),
+    power = power * 100 
+  )
+
+fig2 <- ggplot(plot_long, aes(x = rho_high, y = power, color = alpha_type)) +
+  geom_line(size = 1.1) +
+  geom_hline(yintercept = 75, linetype = "dashed") +
+  facet_grid(diff ~ ratio) +
+  labs(
+    title = "Power vs Amyloid+ Correlation",
+    x = "Amyloid+ Correlation (ρ_high)",
+    y = "Power (%)",
+    color = "Alpha Level"
+  ) +
+  scale_color_manual(values = c("red", "blue", "darkgreen")) +
+  theme_minimal(base_size = 14) +
+  theme(
+    strip.text = element_text(size = 14, face = "bold"),
+    legend.position = "bottom"
+  )
+
+summary_80 <- plot_long %>%
+  group_by(ratio, diff, alpha_type) %>%
+  # keep only scenarios with at least 80% power
+  filter(power >= 80) %>%
+  # among those, find the smallest rho_high that achieves it
+  slice_min(rho_high, with_ties = FALSE) %>%
+  ungroup() %>%
+  arrange(ratio, diff, alpha_type)
+
+summary_80_wide <- summary_80 %>%
+  select(ratio, diff, alpha_type, rho_high) %>%
+  pivot_wider(
+    names_from  = alpha_type,
+    values_from = rho_high,
+    names_prefix = "rho_high_at_80pct_"
+  ) %>%
+  arrange(ratio, diff)
+
+aim2_table <- summary_80 %>% 
+  mutate(
+    alpha_type = paste0("α = ", alpha_type),
+    rho_high   = round(rho_high, 2),
+    diff       = round(diff, 2),
+    power      = round(power, 1),
+    ratio_label = case_when(
+      ratio == "30_70" ~ "30/70 Split (Low Prevalence)",
+      ratio == "40_60" ~ "40/60 Split (Moderate Imbalance)",
+      ratio == "50_50" ~ "50/50 Split (Balanced Groups)",
+      ratio == "60_40" ~ "60/40 Split (Moderate Imbalance)",
+      TRUE ~ ratio
+    )
+  ) %>% 
+  select(-rho_low) %>%
+  arrange(ratio_label, diff, alpha_type) %>% 
+  gt(groupname_col = "ratio_label") %>% 
+  tab_header(
+    title = "Minimum Amyloid+ Correlation (ρ High) Needed for 80% Power",
+    subtitle = "Grouped by prevalence ratio, interaction size (Δρ), and α level"
+  ) %>% 
+  cols_label(
+    diff       = html("<div style='white-space:normal;'>Interaction Size (Δρ)</div>"),
+    alpha_type = html("<div style='white-space:normal;'>α Level</div>"),
+    rho_high   = html("<div style='white-space:normal;'>Minimum ρ High<br>for 80% Power</div>"),
+    power      = html("<div style='white-space:normal;'>Power (%)</div>")
+  ) %>% 
+  fmt_number(
+    columns = c(diff, rho_high, power),
+    decimals = 2
+  ) %>% 
+  # data_color(
+  #   columns = rho_high,
+  #   fn = scales::col_numeric(
+  #     palette = c("#08306b", "#6baed6", "#f7fbff"),
+  #     domain = range(summary_80$rho_high, na.rm = TRUE)
+  #   )
+  # ) %>% 
+  tab_options(
+    table.font.size = px(14),
+    data_row.padding = px(6),
+    heading.align = "center",
+    column_labels.background.color = "#f0f0f0"
+  )
+
+aim2_table_wide <- summary_80_wide %>% 
+  gt(groupname_col = "ratio") %>% 
+  tab_header(
+    title = "Smallest \u03C1 High Achieving ≥ 80% Power",
+    subtitle = "Across \u03B1 levels and effect size differences"
+  ) %>% 
+  cols_label(
+    diff = "Difference (diff)",
+    `rho_high_at_80pct_0.05/4` = "\u03C1 High at 80% (\u03B1 = 0.05/4)",
+    `rho_high_at_80pct_0.05/6` = "\u03C1 High at 80% (\u03B1 = 0.05/6)",
+    `rho_high_at_80pct_0.05/24` = "\u03C1 High at 80% (\u03B1 = 0.05/24)"
+  ) %>% 
+  fmt_number(
+    columns = starts_with("rho_high"),
+    decimals = 2
+  ) %>% 
+  data_color(
+    columns = starts_with("rho_high"),
+    fn = scales::col_numeric(
+      palette = c("#08306b", "#6baed6", "#f7fbff"),
+      domain = range(summary_80_wide %>% select(starts_with("rho_high")), na.rm = TRUE),
+      na.color = "white"
+    )
+  ) %>% 
+  tab_options(
+    table.font.size = px(14),
+    data_row.padding = px(6),
+    heading.align = "center"
+  )
+```
+
+## Data Analysis
+
 Aim 1 will evaluate whether peripheral inflammatory markers are associated with a 1 year decline in memory and cortical thickness in aMCI. The outcomes will be AD-signature cortical thickness (continuous) and five episodic memory outcomes (continuous; (1) 20' Delay, Total Correct, (2) Recognition, D-Prime, (3) 15' Delay, Total Correct, (4) Proportion Correct, (5) 1-Week Delay, Total Correct). All outcomes will be modeled as a 1 year change (Year 1 - Baseline), and models will include baseline value adjustments to allowing coefficients to be interpreted as the effect on the 1 year change. Hypothesis 1a will examine baseline cytokine (IL-6, TNF-$\alpha$) and chemokine (MCP-1, Eotaxin-1) levels as primary predictors; hypothesis 1b will test changes in these markers over the 1 year period. Each inflammatory marker will be analyzed in separate models to avoid multicollinearity, with exploratory joint models. The general model form for aim 1 will be $Outcome_{Y1-Y0} = \beta_0 + \beta_1 Marker_{Y1 \text{ or } Y1-Y0} + \beta_2 Outcome_{Y0} + \beta_n Covariates + \epsilon$ with an alternative hypothesis that $\beta_1 \neq 0$. 
 
 Aim 2 will examine whether amyloid deposition modifies the relationship between inflammation and clinical progression. The primary hypothesis will test whether baseline amyloid deposition interacts with baseline inflammatory markers to predict a one year decline in episodic memory and cortical thickness. The secondary hypothesis will test whether baseline amyloid deposition interacts with the 1 year change in inflammatory markers to predict the one year decline in the outcomes. Models will follow a similar approach to aim 1, but will include baseline amyloid and an interaction. The general model form for aim 2 will be $Outcome_{Y1-Y0} = \beta_0 + \beta_1 Marker_{Y1 \text{ or } Y1-Y0} + \beta_2 Amyloid_{Y0} + \beta_3 Marker_{Y1 \text{ or } Y1-Y0} * Amyloid_{Y0} + \beta_4 Outcome_{Y0} + \beta_n Covariates + \epsilon$ with an alternative hypothesis that $\beta_3 \neq 0$. 
 
 All models will adjust for age, sex, APOE status, and baseline outcome *a priori*. Additional potential covariates (including education, baseline CDR, GDS,BMI, hypercholesterolemia, blood pressure, NSAID use, immune-related health conditions, and cardiovascular risk) will be evaluated as potential confounders or precision variables. This evaluation will rely on simple exploratory checks of association among markers, outcomes, and candidate covariates. Variables that primarily improve precision will be added to the final models, improving power. Interpretation will be cautious in the presence of correlated variables. Given correlations among outcomes and markers, a mild multiple-comparison approach will be implemented. Once empirical correlations are known, more formal adjustments will be explored. For primary analyses, type I error will be controlled with an adjusted Bonferroni approach by dividing $\alpha$ by 4 (markers), 6 (outcomes), and 24 (markers*outcomes), applied separately within each hypothesis.
+
+## Power
 
 For power, each hypothesis will be approximated using a linear regression framework with a continuous predictor (inflammatory marker or amyloid*marker interaction). Because all longitudinal analyses model year 1 outcomes adjusted for baseline values, we can express the effect of interest as the partial $R^2$ attributable to the predictor of interest. This can be approximated as the squared correlation coefficient (with the effective sample size adjusted for baseline correlation with the year 1 outcome). Power analysis can then be conducted to determine the observable effect size at various power levels with the expected sample size (125 aMCI/50 HC after attrition). This approach will provide a conservative estimate of power, as additional covariates such as age and sex will function as precision variables in the final analysis. Separate power calculations will be performed for each hypothesis. 
 
@@ -37,4 +303,15 @@ For power, each hypothesis will be approximated using a linear regression framew
 
 Code Directory: https://github.com/eweible/BIOS6624.git
 
-File name: P2/Code/P2_Data_Analysis_Plan.Rmd
+File name: P2/Code/P2_Report.Rmd
+
+#### Tables and Figures
+
+```{r fig1, echo=FALSE}
+fig1
+```
+
+```{r tab1, echo=FALSE}
+aim1_table
+```
+
