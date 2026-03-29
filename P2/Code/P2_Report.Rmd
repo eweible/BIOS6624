@@ -296,7 +296,11 @@ All models will adjust for age, sex, APOE status, and baseline outcome *a priori
 
 ## Power
 
-For power, each hypothesis will be approximated using a linear regression framework with a continuous predictor (inflammatory marker or amyloid*marker interaction). Because all longitudinal analyses model year 1 outcomes adjusted for baseline values, we can express the effect of interest as the partial $R^2$ attributable to the predictor of interest. This can be approximated as the squared correlation coefficient (with the effective sample size adjusted for baseline correlation with the year 1 outcome). Power analysis can then be conducted to determine the observable effect size at various power levels with the expected sample size (125 aMCI/50 HC after attrition). This approach will provide a conservative estimate of power, as additional covariates such as age and sex will function as precision variables in the final analysis. Separate power calculations will be performed for each hypothesis. 
+Because all longitudinal analyses model 1 year change outcomes adjusted for baseline values, the effect of interest can be expressed as the partial $R^2$ attributable to the predictor of interest. In practice, this can be approximated using the correlation between each inflammatory marker and each outcome. Preliminary data for two change outcomes (change in cortical thickness and change in CLVT) and two baseline inflammatory markers (IL-6 and MCP-1), produced correlations ranging from 0.2-0.7 (*Figure 1*), which informed the range of effect sizes examined. For both aims, power was calculated using the expected sample size of 175 and the three adjusted $\alpha$ levels described above ($0.05/4$, $0.05/6$, $0.05/24$). These analyses provide a conservative estimate of power, as precision variables will reduce unexplained variance in the final models. 
+
+Power for Aim 1 is summarized in *Table 1*. Even for the most conservative $\alpha$ tested, power is above 80\% when the correlation is at least 0.3. Power remains above 80\% for a correlation of 0.25 for $\alpha = 0.05/4$, but power is low for correlations of 0.2 and below across all $\alpha$s. 
+
+As Aim 2 is focused on a continuous x continuous interaction, we simplified to a more conservative approach of treating amyloid deposition as dichotomous: positive or negative. Power calculations varied the correlation in the amyloid-positive group ($\rho_{high}$ = 0.2-0.7), the difference between amyloid groups ($\Delta \rho$ = 0.1-0.5), and the amyloid prevalence ratio (30/70, 40/60, 50/50, 60/40). These scenarios reflect a range of biolgically plausibe interaction effects and group distributions. Power for Aim 2 is summarized in *Table 2* and visualized in *Figure 2*. 
 
 \newpage
 ## Appendix 
@@ -315,3 +319,14 @@ fig1
 aim1_table
 ```
 
+```{r fig2, echo=FALSE}
+fig2
+```
+
+```{r tab2, echo=FALSE}
+aim2_table
+```
+
+# TODO - check figure and table numbering to be consistent with the grant
+
+# TODO - change values tested for aim 2 to be a smaller set (remove 0.1, etc.)
