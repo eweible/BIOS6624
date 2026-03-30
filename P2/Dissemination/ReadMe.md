@@ -6,6 +6,6 @@ Details about the files:
   
 File | Description
 ---|---------------------------------------------------------------------
-P2_Presentation.pptx  | Presentation of final analysis plan and power report.
-
+P2_Presentation.pptx  | Presentation of final analysis plan and power report
+P2_Presentation.pdf   | Presentation as pdf to prevent formatting issues
   
