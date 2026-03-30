@@ -1,4 +1,4 @@
-**Project Name**: P1 - Grant analysis plan and power analysis for Alzheimer's
+**Project Name**: P2 - Grant analysis plan and power analysis for Alzheimer's
  
 
 Details about the folders:
