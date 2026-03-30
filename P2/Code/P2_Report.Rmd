@@ -12,6 +12,8 @@ header-includes:
   - \usepackage{float}
   - \usepackage{caption}
   - \captionsetup{font=small}
+  - \usepackage{graphicx}
+  - \setkeys{Gin}{width=\linewidth, keepaspectratio}
 editor_options: 
   chunk_output_type: console
 ---
@@ -101,7 +103,6 @@ aim1_table <- aim1_results %>%
   gt() %>% # Convert to gt
   tab_header(
     title = "Power to Detect Correlations Across \u03B1 Levels",
-    #subtitle = "N = 175; Two-sided tests; Adjusted \u03B1 for markers, outcomes, and all tests"
   ) %>% # Labels
   cols_label(
     r = "Correlation",
@@ -126,7 +127,7 @@ aim1_table <- aim1_results %>%
     heading.align = "center"
   ) %>%
   tab_footnote(
-    footnote = "Table 4. Power to detect correlations between inflammatory markers and 1 year change in cognitive or cortical outcomes across a range of effect sizes. Power was calculated for correlations from 0.20 to 0.50 (in increments of 0.05) using a sample size of N = 175 and two‑sided tests. Three adjusted Type I error thresholds were evaluated to reflect the number of markers (\u03B1 = 0.05/4), outcomes (\u03B1 = 0.05/6), and markers*outcomes (\u03B1 = 0.05/24). Power exceeded 80% for correlations of at least 0.30 under all \u03B1 levels. As expected, correlations of 0.20 yielded low power across all thresholds."
+    footnote = "Table 4. Power to detect correlations between inflammatory markers and 1 year change in cognitive or cortical outcomes across a range of effect sizes. Power was calculated for correlations from 0.20 to 0.50 (in increments of 0.05) using a sample size of N = 175 and two-sided tests. Three adjusted Type I error thresholds were evaluated to reflect the number of markers (\u03B1 = 0.05/4), outcomes (\u03B1 = 0.05/6), and markers*outcomes (\u03B1 = 0.05/24). Power exceeded 80% for correlations of at least 0.30 under all \u03B1 levels. As expected, correlations of 0.20 yielded low power across all thresholds."
   )
 ```
 ```{r aim2_power, echo=FALSE}
@@ -175,7 +176,7 @@ for (ratio_name in names(ratios)) {
   results[[ratio_name]] <- do.call(rbind, tmp_list)
 } # Loop over ratios * r_high * delta_rho * alpha
 ```
-```{r aim2_visualizations, echo=FALSE, include = FALSE}
+```{r aim2_visualizations, echo=FALSE, include=FALSE}
 # Combine all results into one data frame
 plot_df <- bind_rows(
   lapply(names(results), function(name) {
@@ -192,29 +193,49 @@ plot_long <- plot_df %>%
   ) %>%
   mutate(
     alpha_type = recode(alpha_type,
-      "power_alpha_markers"  = "0.05/4",
+      "power_alpha_markers" = "0.05/4",
       "power_alpha_outcomes" = "0.05/6",
-      "power_alpha_all"      = "0.05/24"
+      "power_alpha_all" = "0.05/24"
     ),
     power = power * 100 
   )
 
-fig2 <- ggplot(plot_long, aes(x = rho_high, y = power, color = alpha_type)) +
+plot_long2 <- plot_long %>%
+  filter(diff >= 0.3)
+ratio_labels <- c(
+  "30_70" = "30/70",
+  "40_60" = "40/60",
+  "50_50" = "50/50",
+  "60_40" = "60/40"
+)
+fig2 <- ggplot(plot_long2, aes(x = rho_high, y = power, color = alpha_type)) +
   geom_line(size = 1.1) +
-  geom_hline(yintercept = 75, linetype = "dashed") +
-  facet_grid(diff ~ ratio) +
-  labs(
-    title = "Power vs Amyloid+ Correlation",
-    x = "Amyloid+ Correlation",
-    y = "Power (%)",
-    color = "Alpha Level"
+  geom_hline(yintercept = 80, linetype = "dashed", color = "gray40") +
+  facet_grid(
+    diff ~ ratio,
+    labeller = labeller(
+      ratio = ratio_labels,
+      diff = function(x) paste0("\u0394 Correlation = ", x)
+    )
   ) +
-  scale_color_manual(values = c("red", "blue", "darkgreen")) +
+  labs(
+    title = "Power Across Amyloid+ Correlation Levels",
+    x = "Correlation in Amyloid+ Group",
+    y = "Power (%)",
+    color = "Adjusted \u03B1 Level"
+  ) +
+  scale_color_manual(
+    values = c(
+      "0.05/4" = "#053061", 
+      "0.05/6"  = "#4393c3",
+      "0.05/24"  = "#d6604d"
+    )
+  ) +
   theme_minimal(base_size = 14) +
   theme(
     strip.text = element_text(size = 14, face = "bold"),
     legend.position = "bottom"
-  )
+  ) 
 
 summary_80 <- plot_long %>%
   group_by(ratio, diff, alpha_type) %>%
@@ -225,22 +246,13 @@ summary_80 <- plot_long %>%
   ungroup() %>%
   arrange(ratio, diff, alpha_type)
 
-# summary_80_wide <- summary_80 %>%
-#   select(ratio, diff, alpha_type, rho_high) %>%
-#   pivot_wider(
-#     names_from  = alpha_type,
-#     values_from = rho_high,
-#     names_prefix = "rho_high_at_80pct_"
-#   ) %>%
-#   arrange(ratio, diff)
-
 aim2_table <- summary_80 %>% 
   ungroup() %>% 
   mutate(
     alpha_type = paste0("\u03B1 = ", alpha_type),
-    rho_high   = round(rho_high, 2),
-    diff       = round(diff, 2),
-    power      = round(power, 1),
+    rho_high = round(rho_high, 2),
+    diff = round(diff, 2),
+    power = round(power, 1),
     ratio_label = case_when(
       ratio == "30_70" ~ "30/70 Split (Low Prevalence)",
       ratio == "40_60" ~ "40/60 Split (Moderate Imbalance)",
@@ -258,21 +270,18 @@ aim2_table <- summary_80 %>%
 
   tab_header(
     title = "Minimum Amyloid+ Correlation Needed for 80% Power",
-    #subtitle = "Grouped by prevalence ratio, interaction size (\u0394\u03C1), and \u03B1 level"
   ) %>% 
 
   cols_label(
-    diff       = html("<div style='white-space:normal;'>Group Difference<br>(\u0394 correlation)</div>"),
+    diff = html("<div style='white-space:normal;'>Group Difference<br>(\u0394 correlation)</div>"),
     alpha_type = html("<div style='white-space:normal;'>Adjusted \u03B1 Level</div>"),
-    rho_high   = html("<div style='white-space:normal;'>Required Correlation<br>in Amyloid+ Group</div>"),
-    power      = html("<div style='white-space:normal;'>Power (%)</div>")
+    rho_high = html("<div style='white-space:normal;'>Required Correlation<br>in Amyloid+ Group</div>"),
+    power = html("<div style='white-space:normal;'>Power (%)</div>")
   ) %>% 
-
   fmt_number(
     columns = c(diff, rho_high, power),
     decimals = 2
   ) %>% 
-
   data_color(
     columns = rho_high,
     fn = function(x) {
@@ -282,7 +291,6 @@ aim2_table <- summary_80 %>%
       )(x)
     }
   ) %>% 
-
   tab_options(
     table.font.size = px(14),
     data_row.padding = px(6),
@@ -290,79 +298,8 @@ aim2_table <- summary_80 %>%
     column_labels.background.color = "#f0f0f0"
   ) %>%
   tab_footnote(
-    footnote = "Table 5. Minimum amyloid+ correlation required to achieve 80% power for detecting differences in marker-outcome correlations between amyloid+ and amyloid- groups. Rows correspond to amyloid prevalence ratios (30/70, 40/60, 50/50, 60/40), and columns report the smallest amyloid+ correlation that achieves at least 80% power for each difference in correlations and \u03B1 level. Values reflect two‑sample correlation difference tests with N = 175. If lower amyloid+ correlations or group differences are not present, this indicates that even the largest correlation tested (0.70) did not reach 80% power. Across all prevalence patterns, large interaction effects (0.50) are detectable with moderate amyloid+ correlations (0.50–0.60) under \u03B1 = 0.05/4 or 0.05/6, whereas stricter correction (\u03B1 = 0.05/24) requires strong correlations (0.70). Moderate interaction effects (0.40) require amyloid+ correlations of 0.70 and do not reach 80% power under \u03B1 = 0.05/24."
+    footnote = "Table 5. Minimum amyloid+ correlation required to achieve 80% power for detecting differences in marker-outcome correlations between amyloid+ and amyloid- groups. Rows correspond to amyloid prevalence ratios (30/70, 40/60, 50/50, 60/40), and columns report the smallest amyloid+ correlation that achieves at least 80% power for each difference in correlations and \u03B1 level. Values reflect two-sample correlation difference tests with N = 175. If lower amyloid+ correlations or group differences are not present, this indicates that even the largest correlation tested (0.70) did not reach 80% power. Across all prevalence patterns, large interaction effects (0.50) are detectable with moderate amyloid+ correlations (0.50–0.60) under \u03B1 = 0.05/4 or 0.05/6, whereas stricter correction (\u03B1 = 0.05/24) requires strong correlations (0.70). Moderate interaction effects (0.40) require amyloid+ correlations of 0.70 and do not reach 80% power under \u03B1 = 0.05/24."
   )
-
-# aim2_table_wide <- summary_80_wide %>% 
-#   gt(groupname_col = "ratio") %>% 
-#   tab_header(
-#     title = "Smallest \u03C1 High Achieving ≥ 80% Power",
-#     subtitle = "Across \u03B1 levels and effect size differences"
-#   ) %>% 
-#   cols_label(
-#     diff = "Difference (diff)",
-#     `rho_high_at_80pct_0.05/4` = "\u03C1 High at 80% (\u03B1 = 0.05/4)",
-#     `rho_high_at_80pct_0.05/6` = "\u03C1 High at 80% (\u03B1 = 0.05/6)",
-#     `rho_high_at_80pct_0.05/24` = "\u03C1 High at 80% (\u03B1 = 0.05/24)"
-#   ) %>% 
-#   fmt_number(
-#     columns = starts_with("rho_high"),
-#     decimals = 2
-#   ) %>% 
-#   data_color(
-#     columns = starts_with("rho_high"),
-#     fn = scales::col_numeric(
-#       palette = c("#08306b", "#6baed6", "#f7fbff"),
-#       domain = range(summary_80_wide %>% select(starts_with("rho_high")), na.rm = TRUE),
-#       na.color = "white"
-#     )
-#   ) %>% 
-#   tab_options(
-#     table.font.size = px(14),
-#     data_row.padding = px(6),
-#     heading.align = "center"
-#   )
-```
-
-
-```{r echo=FALSE, include = FALSE}
-plot_long2 <- plot_long %>%
-  filter(diff >= 0.3)
-ratio_labels <- c(
-  "30_70" = "30/70",
-  "40_60" = "40/60",
-  "50_50" = "50/50",
-  "60_40" = "60/40"
-)
-fig2 <- ggplot(plot_long2, aes(x = rho_high, y = power, color = alpha_type)) +
-  geom_line(size = 1.1) +
-  geom_hline(yintercept = 80, linetype = "dashed", color = "gray40") +
-  facet_grid(
-    diff ~ ratio,
-    labeller = labeller(
-      ratio = ratio_labels,
-      diff  = function(x) paste0("Δ Correlation = ", x)
-    )
-  ) +
-  labs(
-    title = "Power Across Amyloid+ Correlation Levels",
-    x = "Correlation in Amyloid+ Group",
-    y = "Power (%)",
-    color = "Adjusted α Level"
-  ) +
-  scale_color_manual(
-    values = c(
-      "0.05/4" = "#053061",  # dark blue (strict)
-      "0.05/6"  = "#4393c3",  # medium blue
-      "0.05/24"  = "#d6604d"   # orange/red (overall)
-    )
-  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    strip.text = element_text(size = 14, face = "bold"),
-    legend.position = "bottom"
-  )
-fig2
 ```
 
 ## Data Analysis
@@ -375,13 +312,13 @@ All models will adjust for age, sex, APOE status, and baseline outcome *a priori
 
 ## Power
 
-Because all longitudinal analyses model 1 year change outcomes adjusted for baseline values, the effect of interest can be expressed as the partial $R^2$ attributable to the predictor of interest. In practice, this can be approximated using the correlation between each inflammatory marker and each outcome. Preliminary data for two change outcomes (change in cortical thickness and change in CLVT) and two baseline inflammatory markers (IL-6 and MCP-1), produced correlations ranging from 0.2-0.7 (*Figure 1*), which informed the range of effect sizes examined. For both aims, power was calculated using the expected sample size of 175 and the three adjusted $\alpha$ levels described above ($0.05/4$, $0.05/6$, $0.05/24$). These analyses provide a conservative estimate of power, as precision variables will reduce unexplained variance in the final models. 
+Because all longitudinal analyses model 1 year change outcomes adjusted for baseline values, the effect of interest can be expressed as the partial $R^2$ attributable to the predictor of interest. In practice, this can be approximated using the correlation between each inflammatory marker and each outcome. Preliminary data for two change outcomes (change in cortical thickness and change in CLVT) and two baseline inflammatory markers (IL-6 and MCP-1), produced correlations ranging from 0.2-0.7 (*Figure 1*), which informed the range of effect sizes examined. For both aims, power was calculated using the expected sample size of 175 and the three adjusted $\alpha$ levels described above ($0.05/4$, $0.05/6$, $0.05/24$) in R v4.5.2 using the powertools 1.0.0 package (corr.1samp and corr.2samp). These analyses provide a conservative estimate of power, as precision variables will reduce unexplained variance in the final models. 
 
 Power for Aim 1 is summarized in *Table 4*. Even for the most conservative $\alpha$ tested, power is above 80\% when the correlation is at least 0.3. Power remains above 80\% for a correlation of 0.25 for $\alpha = 0.05/4$, but power is low for correlations of 0.2 and below across all $\alpha$s. 
 
-As Aim 2 is focused on a continuous x continuous interaction, we simplified to a more conservative approach of treating amyloid deposition as dichotomous: positive or negative. Power calculations varied the correlation in the amyloid-positive group ($\rho_{high}$ = 0.2-0.7), the difference between amyloid groups ($\Delta \rho$ = 0.1-0.5), and the amyloid prevalence ratio (30/70, 40/60, 50/50, 60/40). These scenarios reflect a range of biologically plausible interaction effects and group distributions. Power for Aim 2 is summarized in *Table 5* and visualized in *Figure 2*. 
+As Aim 2 focused on a continuous/continuous interaction, amyloid deposition was conservatively simplified to dichotomous: positive or negative. Power calculations varied the correlation in the amyloid+ group ($\rho_{high}$ = 0.2-0.7), the difference between amyloid groups ($\Delta \rho$ = 0.1-0.5), and the amyloid prevalence ratio (30/70, 40/60, 50/50, 60/40). These scenarios reflected a range of biologically plausible interaction effects and group distributions. 
 
-# TODO talk about results
+Power for Aim 2 is summarized in *Table 5* and visualized in *Figure 2*. Across scenarios, larger interaction effects and more balanced amyloid+:amyloid- group ratios produced higher power, while stricter $\alpha$ thresholds required stronger correlations in the amyloid+ group. Across plausible prevalence patterns, large interaction effects (0.50) were detectable with moderate amyloid+ correlations under $\alpha$ = 0.05/4 or 0.05/6, whereas $\alpha$ = 0.05/24 required correlations of at least 0.70. Moderate interaction effects (0.40) required similarly strong correlations and did not reach 80% power under the strictest $\alpha$, and no interaction effects tested below 0.40 reached 80% power under the available conditions.
 
 \newpage
 ## Appendix 
@@ -390,10 +327,20 @@ Code Directory: https://github.com/eweible/BIOS6624.git
 
 File name: P2/Code/P2_Report.Rmd
 
-![Correlation heatmap showing associations among baseline inflammatory markers (IL‑6, MCP‑1) and 1 year change in AD‑signature cortical thickness and CVLT. Colors represent Pearson correlation coefficients, with darker shades indicating stronger positive or negative associations. In preliminary data, IL‑6 and MCP‑1 were strongly correlated with each other (r=0.93) and showed moderate correlations with change in cortical thickness (r=-0.60 and -0.69, respectively) and change in CVLT performance (r=-0.26 and -0.32). These values informed the range of effect sizes examined in subsequent power analyses.](Figures/Correlation_Heatmap.png)
+Data Directory: C:/Users/weiblee/OneDrive/Documents/Anschutz/Spring 2026/6624_Advanced/Weible_Advanced/P2/DataRaw
+
+\newpage
+
+![Correlation heatmap showing associations among baseline inflammatory markers (IL-6, MCP-1) and 1 year change in AD-signature cortical thickness and CVLT. Colors represent Pearson correlation coefficients, with darker shades indicating stronger positive or negative associations. In preliminary data, IL-6 and MCP-1 were strongly correlated with each other (r=0.93) and showed moderate correlations with change in cortical thickness (r=-0.60 and -0.69, respectively) and change in CVLT performance (r=-0.26 and -0.32). These values informed the range of effect sizes examined in subsequent power analyses.](Figures/Correlation_Heatmap.png)
+
+\newpage
 
 ![](Figures/aim1_table.png)
 
-![Power to detect differences in marker-outcome correlations between amyloid+ and amyloid- groups across interaction sizes, amyloid prevalence ratios, and $\alpha$ levels. Lines show the power achieved for a given amyloid+ correlation, with separate panels for each interaction size (difference in correlations) and each amyloid+:amyloid- group ratio (30/70, 40/60, 50/50, 60/40). Power was calculated using two‑sample correlation difference tests with N = 175 and adjusted Type I error thresholds ($\alpha$ = 0.05/4, 0.05/6, 0.05/24). The dashed horizontal line marks 80% power. Larger interaction effects and more balanced group ratios yield higher power, while stricter $\alpha$ thresholds require stronger underlying correlations in the amyloid+ group to achieve comparable power. Some differences in correlations never reach 80% power for any measured amyloid+ correlation.](Figures/aim2_power.png)
+\newpage
+
+![Power to detect differences in marker-outcome correlations between amyloid+ and amyloid- groups across interaction sizes, amyloid prevalence ratios, and $\alpha$ levels. Lines show the power achieved for a given amyloid+ correlation, with separate panels for each interaction size (difference in correlations) and each amyloid+:amyloid- group ratio (30/70, 40/60, 50/50, 60/40). Power was calculated using two-sample correlation difference tests with N = 175 and adjusted Type I error thresholds ($\alpha$ = 0.05/4, 0.05/6, 0.05/24). The dashed horizontal line marks 80% power. Larger interaction effects and more balanced group ratios yield higher power, while stricter $\alpha$ thresholds require stronger underlying correlations in the amyloid+ group to achieve comparable power. Some differences in correlations never reach 80% power for any measured amyloid+ correlation.](Figures/aim2_power.png)
+
+\newpage
 
 ![](Figures/aim2_table.png)
