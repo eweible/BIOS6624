@@ -52,6 +52,7 @@ fig_names <- c(
 
 rownames(cor_matrix) <- fig_names[rownames(cor_matrix)]
 colnames(cor_matrix) <- fig_names[colnames(cor_matrix)]
+  # Add names for plot
 
 fig1 <- ggplot(melt(cor_matrix), aes(Var1, Var2, fill = value)) +
   geom_tile() +
@@ -72,7 +73,7 @@ fig1 <- ggplot(melt(cor_matrix), aes(Var1, Var2, fill = value)) +
     title = "Correlation Heatmap of Preliminary Data",
     x = "",
     y = ""
-  )
+  ) # Plot heatmap
 ```
 ```{r aim1_power, echo=FALSE}
 r_vals <- seq(0.2, 0.5, by = 0.05)
@@ -103,24 +104,24 @@ aim1_table <- aim1_results %>%
   gt() %>% # Convert to gt
   tab_header(
     title = "Power to Detect Correlations Across \u03B1 Levels",
-  ) %>% # Labels
+  ) %>% 
   cols_label(
     r = "Correlation",
     power_alpha_markers = html("Power<br>(\u03B1 = 0.05/4)"),
     power_alpha_outcomes = html("Power<br>(\u03B1 = 0.05/6)"),
     power_alpha_all = html("Power<br>(\u03B1 = 0.05/24)")
-  ) %>% 
+  ) %>% # Labels
   fmt_percent(
     columns = starts_with("power"),
     decimals = 1
-  ) %>% 
+  ) %>% # Rounding
   data_color(
     columns = starts_with("power"),
     fn = scales::col_numeric(
       palette = c("#f7fbff", "#6baed6", "#08306b"),
       domain = c(0, 1)
     )
-  ) %>% 
+  ) %>% # Color coding
   tab_options(
     table.font.size = px(14),
     data_row.padding = px(6),
@@ -177,14 +178,12 @@ for (ratio_name in names(ratios)) {
 } # Loop over ratios * r_high * delta_rho * alpha
 ```
 ```{r aim2_visualizations, echo=FALSE, include=FALSE}
-# Combine all results into one data frame
 plot_df <- bind_rows(
   lapply(names(results), function(name) {
     results[[name]] %>% mutate(ratio = name)
   })
-)
+) # Combine results into one data frame
 
-# Convert to long format
 plot_long <- plot_df %>%
   pivot_longer(
     cols = starts_with("power_"),
@@ -198,16 +197,19 @@ plot_long <- plot_df %>%
       "power_alpha_all" = "0.05/24"
     ),
     power = power * 100 
-  )
+  ) # Convert to long format
 
 plot_long2 <- plot_long %>%
   filter(diff >= 0.3)
+  # Filter to desired items on plot
+
 ratio_labels <- c(
   "30_70" = "30/70",
   "40_60" = "40/60",
   "50_50" = "50/50",
   "60_40" = "60/40"
-)
+) # Rename
+
 fig2 <- ggplot(plot_long2, aes(x = rho_high, y = power, color = alpha_type)) +
   geom_line(size = 1.1) +
   geom_hline(yintercept = 80, linetype = "dashed", color = "gray40") +
@@ -235,13 +237,13 @@ fig2 <- ggplot(plot_long2, aes(x = rho_high, y = power, color = alpha_type)) +
   theme(
     strip.text = element_text(size = 14, face = "bold"),
     legend.position = "bottom"
-  ) 
+  ) # Plot 
 
 summary_80 <- plot_long %>%
   group_by(ratio, diff, alpha_type) %>%
-  # keep only scenarios with at least 80% power
+    # Keep only scenarios with at least 80% power
   filter(power >= 80) %>%
-  # among those, find the smallest rho_high that achieves it
+    # Find the smallest rho_high that achieves it
   slice_min(rho_high, with_ties = FALSE) %>%
   ungroup() %>%
   arrange(ratio, diff, alpha_type)
@@ -259,29 +261,26 @@ aim2_table <- summary_80 %>%
       ratio == "50_50" ~ "50/50 Split (Balanced Groups)",
       ratio == "60_40" ~ "60/40 Split (Moderate Imbalance)",
       TRUE ~ ratio
-    )
+    ) # Labels and rounding
   ) %>% 
   select(-rho_low, -ratio) %>% 
   arrange(ratio_label, diff, alpha_type) %>% 
-
   relocate(ratio_label, .after = last_col()) %>% 
-
   gt(groupname_col = "ratio_label") %>% 
-
+    # Formatting
   tab_header(
     title = "Minimum Amyloid+ Correlation Needed for 80% Power",
   ) %>% 
-
   cols_label(
     diff = html("<div style='white-space:normal;'>Group Difference<br>(\u0394 correlation)</div>"),
     alpha_type = html("<div style='white-space:normal;'>Adjusted \u03B1 Level</div>"),
     rho_high = html("<div style='white-space:normal;'>Required Correlation<br>in Amyloid+ Group</div>"),
     power = html("<div style='white-space:normal;'>Power (%)</div>")
-  ) %>% 
+  ) %>% # Labels
   fmt_number(
     columns = c(diff, rho_high, power),
     decimals = 2
-  ) %>% 
+  ) %>% # Rounding
   data_color(
     columns = rho_high,
     fn = function(x) {
@@ -290,7 +289,7 @@ aim2_table <- summary_80 %>%
         domain  = c(0.2, 0.7)
       )(x)
     }
-  ) %>% 
+  ) %>% # Color coding
   tab_options(
     table.font.size = px(14),
     data_row.padding = px(6),
