@@ -1,0 +1,59 @@
+---
+title: "P3_Data_Exploration"
+output: html_document
+date: "2026-04-01"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(survival)
+library(survminer)
+dat_raw <- read.csv(here::here("P3/DataRaw", "frmgham2.csv"))
+```
+
+```{r}
+View(dat_raw)
+```
+
+Filter to 10 years with TIMESTRK var not TIME var.
+Change STROKE var. 
+stroke var indicator, time to stroke var, baseline covariates. Need to change the stroke vars likely. Only care about first stroke
+```{r}
+vars <- c("RANDID", "STROKE", "SEX", "TIMESTRK", "TIME", "AGE", "DIABETES", "SYSBP", "PREVCHD", "BPMEDS", "CURSMOKE", "TOTCHOL", "BMI")
+
+dat_10 <- dat_raw %>%
+  filter(TIMESTRK <= 365.25*10) %>%
+    # Filter to first 10 years
+  group_by(RANDID) %>%
+  filter(!(STROKE == 1 & TIME == 0)) %>%
+  ungroup() %>%
+    # Remove individuals with previous strokes
+  select(all_of(vars))
+    # Variables of interest 
+
+```
+
+```{r}
+surv_object <- Surv(time = as.numeric(dat_10$TIMESTRK), event = as.factor(dat_10$STROKE))
+
+log_rank <- survdiff(surv_object ~ SEX, data = dat_10)
+
+
+dat_10 <- dat_10 %>%
+  mutate(
+    `Time to Censoring` = if_else(`Censoring Status` == 0, `Time Survived in Days after Diagnosis`, NA_real_),
+    `Censoring Status` = factor(`Censoring Status`, levels = c(0, 1), labels = c("Censored", "Died")),
+    `Residual Disease Present` = factor(`Residual Disease Present`, levels = c(1, 2), labels = c("No", "Yes")),
+    `ECOG Performance Status` = factor(`ECOG Performance Status`),
+    `Treatment Group` = factor(`Treatment Group`, labels = c("Treatment Group 1", "Treatment Group 2"))
+  ) 
+table1::table1(~`Time Survived in Days after Diagnosis` + `Censoring Status` + `Time to Censoring` + `Age (years)` + `Residual Disease Present` + `ECOG Performance Status` | `Treatment Group`, dat_table)
+
+cox <- coxph(surv_object ~ rx, data = dat_ovarian)
+  # Hazard ratio: 1-0.5508=0.4492
+
+cox <- coxph(surv_object ~ rx + age + factor(resid.ds) + factor(ecog.ps), data = dat_ovarian)
+  # Hazard ratio: 1 - 0.40072 = 0.59928
+```
+
