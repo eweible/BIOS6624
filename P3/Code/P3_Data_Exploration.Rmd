@@ -18,7 +18,7 @@ dat_raw <- read.csv(here::here("P3/DataRaw", "frmgham2.csv"))
 View(dat_raw)
 ```
 
-Data cleaning
+# Data cleaning
 ```{r}
 dat_10 <- dat_raw %>%
   filter(!(STROKE == 1 & TIMESTRK == 0)) %>%
@@ -48,7 +48,7 @@ dat_cc <- dat_10 %>%
   )) # Complete case dataset for all vars
 ```
 
-Kaplan-Meier curves and log-rank tests
+# Kaplan-Meier curves and log-rank tests
 ```{r}
 surv_object <- Surv(time = dat_cc$time_10, event = dat_cc$stroke_event)
 
@@ -72,9 +72,57 @@ ggsurvplot(fit_bp, data = dat_cc, ylim = c(0.90, 1.00),
            xlab = "Years", ylab = "Stroke-free survival")$plot
 survdiff(Surv(time_10, stroke_event) ~ HIGHBP, data = dat_cc)
 ```
+**Summary:**
+* Sex: KM curves overlap throughout (no difference in survival, supported by log-rank X^2 = 0.4, p = 0.5).
+* Diabetes: KM curves overlap mostly in the first 5 years (small numbers of early events). Diverge strongly later (log-rank: X^2 = 34.3, p < 0.001).
+* BP: Strong visual difference on KM curves and log-rank (high BP has much higher stroke rate, separate cleanly). X^2 = 149, p << 0.001.
 
-Table 1:
+# Table 1:
 ```{r}
 table1(~ AGE + SYSBP + DIABETES + PREVCHD + BPMEDS + CURSMOKE + TOTCHOL + BMI 
        | SEX, data = dat_cc)
 ```
+
+# Cox models and PH checks
+```{r}
+## Males
+dat_male <- dat_cc %>% filter(SEX == "Male")
+dat_female <- dat_cc %>% filter(SEX == "Female")
+
+cox_male_full <- coxph(Surv(time_10, stroke_event) ~ AGE + SYSBP + DIABETES + 
+                         PREVCHD + BPMEDS + CURSMOKE + TOTCHOL + BMI, 
+                       data = dat_male) # Full model
+cox_male_min <- coxph(Surv(time_10, stroke_event) ~ AGE + DIABETES + SYSBP,
+                      data = dat_male) # Smallest model
+cox_male_step <- step(cox_male_full, direction = "backward", 
+                      scope = list(lower = formula(cox_male_min),
+                                   upper = formula(cox_male_full)), k = 2)
+  # Backward selection (AIC)
+    # Male: Age, SysBP, Diabetes, BP Meds, Cur Smoke, Tot Chol
+summary(cox_male_step)
+
+ph_male <- cox.zph(cox_male_step)
+ph_male
+ggcoxzph(ph_male)
+  # Check PH
+
+## Females
+cox_female_full <- coxph(Surv(time_10, stroke_event) ~ AGE + SYSBP + DIABETES +
+                           PREVCHD + BPMEDS + CURSMOKE + TOTCHOL + BMI,
+                         data = dat_female) # Full model
+cox_female_min <- coxph(Surv(time_10, stroke_event) ~ AGE + DIABETES + SYSBP,
+                      data = dat_female) # Smallest model
+cox_female_step <- step(cox_female_full, direction = "backward", , 
+                      scope = list(lower = formula(cox_female_min),
+                                   upper = formula(cox_female_full)), k = 2)
+  # Backward selection (AIC)
+    # Female: Age, SysBP, Diabetes, BP Meds, Prev CHD
+summary(cox_female_step)
+
+ph_female <- cox.zph(cox_female_step)
+ph_female
+ggcoxzph(ph_female)
+  # Check PH
+```
+
+
