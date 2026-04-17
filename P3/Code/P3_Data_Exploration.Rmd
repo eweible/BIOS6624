@@ -2,6 +2,8 @@
 title: "P3_Data_Exploration"
 output: html_document
 date: "2026-04-01"
+editor_options: 
+  chunk_output_type: inline
 ---
 
 ```{r setup, include=FALSE}
@@ -125,4 +127,55 @@ ggcoxzph(ph_female)
   # Check PH
 ```
 
+**Summary:**
+* Males: diabetes and sysBP dominate the stroke risk, age and BP meds also contribute, CURSMOKE and TOTCHOL are marginal/borderline may not actually need to be included
+* Females: diabetes is a weaker predictor than for men, sysBP still dominates. Age, BP meds, and PREVCHD also contribute
+* PH tests look good overall. Only diabetes mildly violates for men (p = 0.008, more curvy), globally is good for each.
+
+# Predicted 10 year probabilities
+```{r}
+ages <- c(40, 50, 60)
+
+## Males
+profiles_male <- expand.grid(
+  AGE = ages,
+  SYSBP = c(120, 160),
+    # Normal vs. high
+  DIABETES = c("No", "Yes")
+) %>% 
+  mutate(
+    PREVCHD = "No",
+    BPMEDS = "No",
+    CURSMOKE = "No",
+    TOTCHOL = mean(dat_male$TOTCHOL, na.rm = TRUE),
+    BMI = mean(dat_male$BMI, na.rm = TRUE)
+  ) # Profiles
+base_male <- survfit(cox_male_step, newdata = profiles_male)
+  # Baseline survival
+pred_male <- summary(base_male, times = 10)
+  # Extract survival at 10 years
+stroke_prob_10_male <- 1 - pred_male$surv
+  # 10-year stroke probability = 1 - S(10)
+
+## Females
+profiles_female <- expand.grid(
+  AGE = ages,
+  SYSBP = c(120, 160),
+    # Normal vs. high
+  DIABETES = c("No", "Yes")
+) %>% 
+  mutate(
+    PREVCHD = "No",
+    BPMEDS = "No",
+    CURSMOKE = "No",
+    TOTCHOL = mean(dat_male$TOTCHOL, na.rm = TRUE),
+    BMI = mean(dat_male$BMI, na.rm = TRUE)
+  ) # Profiles
+base_female <- survfit(cox_female_step, newdata = profiles_female)
+  # Baseline survival
+pred_female <- summary(base_female, times = 10)
+  # Extract survival at 10 years
+stroke_prob_10_female <- 1 - pred_female$surv
+  # 10-year stroke probability = 1 - S(10)
+```
 
