@@ -54,18 +54,27 @@ surv_object <- Surv(time = dat_cc$time_10, event = dat_cc$stroke_event)
 
 ## By sex
 fit_sex <- survfit(surv_object ~ SEX, data = dat_cc)
-ggsurvplot(fit_sex, data = dat_cc, xlab = "Years", ylab = "Stroke-free survival")
+ggsurvplot(fit_sex, data = dat_cc, ylim = c(0.90, 1.00),
+           xlab = "Years", ylab = "Stroke-free survival")$plot
 survdiff(surv_object ~ SEX, data = dat_cc)
 
 ## By diabetes
 fit_diab <- survfit(surv_object ~ DIABETES, data = dat_cc)
-ggsurvplot(fit_diab, data = dat_cc, xlab = "Years", ylab = "Stroke-free survival")
+ggsurvplot(fit_diab, data = dat_cc, ylim = c(0.90, 1.00),
+           xlab = "Years", ylab = "Stroke-free survival")$plot
 survdiff(surv_object ~ DIABETES, data = dat_cc)
 
 ## By high BP
 dat_cc <- dat_cc %>%
   mutate(HIGHBP = if_else(SYSBP >= 160, 1, 0))
 fit_bp <- survfit(Surv(time_10, stroke_event) ~ HIGHBP, data = dat_cc)
-ggsurvplot(fit_bp, data = dat_cc, xlab = "Years", ylab = "Stroke-free survival")
+ggsurvplot(fit_bp, data = dat_cc, ylim = c(0.90, 1.00),
+           xlab = "Years", ylab = "Stroke-free survival")$plot
 survdiff(Surv(time_10, stroke_event) ~ HIGHBP, data = dat_cc)
+```
+
+Table 1:
+```{r}
+table1(~ AGE + SYSBP + DIABETES + PREVCHD + BPMEDS + CURSMOKE + TOTCHOL + BMI 
+       | SEX, data = dat_cc)
 ```
