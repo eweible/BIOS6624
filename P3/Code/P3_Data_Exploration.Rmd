@@ -9,10 +9,12 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
+library(tidyr)
 library(survival)
 library(survminer)
 library(here)
 library(table1)
+library(ggplot2)
 dat_raw <- read.csv(here::here("P3/DataRaw", "frmgham2.csv"))
 ```
 
@@ -31,7 +33,7 @@ dat_10 <- dat_raw %>%
     stroke_event = if_else(STROKE == 1 & time_yrs <= 10, 1, 0)
   ) # Adjust time vars
 dat_10 <- dat_10 %>%
-  select(
+  dplyr::select(
     RANDID, STROKE, SEX, time_10, stroke_event, AGE, DIABETES, SYSBP, PREVCHD, 
     BPMEDS, CURSMOKE, TOTCHOL, BMI
   ) # Restrict to needed vars
@@ -149,7 +151,21 @@ profiles_male <- expand.grid(
     CURSMOKE = "No",
     TOTCHOL = mean(dat_male$TOTCHOL, na.rm = TRUE),
     BMI = mean(dat_male$BMI, na.rm = TRUE)
-  ) # Profiles
+  ) # Profiles for the combos of BP/diabetes
+profiles_male_other <- expand.grid(
+  AGE = ages
+) %>%
+  mutate(
+    SYSBP = 120,
+    DIABETES = "No",
+    PREVCHD = "No",
+    BPMEDS = "Yes",
+    CURSMOKE = "No",
+    TOTCHOL = mean(dat_male$TOTCHOL, na.rm = TRUE),
+    BMI = mean(dat_male$BMI, na.rm = TRUE)
+  ) # Other profile: BP meds
+profiles_male <- bind_rows(profiles_male, profiles_male_other)
+  # Combine profiles
 base_male <- survfit(cox_male_step, newdata = profiles_male)
   # Baseline survival
 pred_male <- summary(base_male, times = 10)
@@ -168,9 +184,23 @@ profiles_female <- expand.grid(
     PREVCHD = "No",
     BPMEDS = "No",
     CURSMOKE = "No",
-    TOTCHOL = mean(dat_male$TOTCHOL, na.rm = TRUE),
-    BMI = mean(dat_male$BMI, na.rm = TRUE)
-  ) # Profiles
+    TOTCHOL = mean(dat_female$TOTCHOL, na.rm = TRUE),
+    BMI = mean(dat_female$BMI, na.rm = TRUE)
+  ) # Profiles for the combos of BP/diabetes
+profiles_female_other <- expand.grid(
+  AGE = ages
+) %>%
+  mutate(
+    SYSBP = 120,
+    DIABETES = "No",
+    PREVCHD = "No",
+    BPMEDS = "Yes",
+    CURSMOKE = "No",
+    TOTCHOL = mean(dat_female$TOTCHOL, na.rm = TRUE),
+    BMI = mean(dat_female$BMI, na.rm = TRUE)
+  ) # Other profile: BP meds
+profiles_female <- bind_rows(profiles_female, profiles_female_other)
+  # Combine profiles
 base_female <- survfit(cox_female_step, newdata = profiles_female)
   # Baseline survival
 pred_female <- summary(base_female, times = 10)
@@ -178,4 +208,80 @@ pred_female <- summary(base_female, times = 10)
 stroke_prob_10_female <- 1 - pred_female$surv
   # 10-year stroke probability = 1 - S(10)
 ```
+
+```{r}
+male_tbl <- profiles_male %>%
+  mutate(
+    prob = as.numeric(stroke_prob_10_male) * 100
+  ) %>% # Convert to percent
+  mutate(
+    Profile = case_when(
+      BPMEDS == "Yes" ~ "Other",
+      SYSBP == 120 & DIABETES == "No" ~ "Baseline",
+      SYSBP == 160 & DIABETES == "No" ~ "High BP",
+      SYSBP == 120 & DIABETES == "Yes" ~ "Diabetes",
+      SYSBP == 160 & DIABETES == "Yes" ~ "Both"
+    )
+  ) %>%
+  select(AGE, Profile, prob)
+male_table_final <- male_tbl %>%
+  pivot_wider(names_from = Profile, values_from = prob) %>%
+  arrange(AGE)
+male_table_final
+
+female_tbl <- profiles_female %>%
+  mutate(
+    prob = as.numeric(stroke_prob_10_female) * 100
+  ) %>% # Convert to percent
+  mutate(
+    Profile = case_when(
+      BPMEDS == "Yes" ~ "Other",
+      SYSBP == 120 & DIABETES == "No"  ~ "Baseline",
+      SYSBP == 160 & DIABETES == "No"  ~ "High BP",
+      SYSBP == 120 & DIABETES == "Yes" ~ "Diabetes",
+      SYSBP == 160 & DIABETES == "Yes" ~ "Both"
+    )
+  ) %>%
+  select(AGE, Profile, prob)
+female_table_final <- female_tbl %>%
+  pivot_wider(names_from = Profile, values_from = prob) %>%
+  arrange(AGE)
+female_table_final
+
+male_heat <- profiles_male %>%
+  mutate(
+    prob = as.numeric(stroke_prob_10_male) * 100,
+    SYSBP = factor(SYSBP),
+    DIABETES = factor(DIABETES),
+    BPMEDS = factor(BPMEDS)
+  )
+
+ggplot(male_heat, aes(x = SYSBP, y = AGE, fill = prob)) +
+  geom_tile(color = "white") +
+  facet_wrap(~ DIABETES, labeller = label_both) +
+  scale_fill_gradient(low = "lightblue", high = "darkred",
+                      name = "10-year risk (%)") +
+  labs(title = "Male 10-year Stroke Risk",
+       x = "Systolic BP",
+       y = "Age") +
+  theme_minimal()
+female_heat <- profiles_female %>%
+  mutate(
+    prob = as.numeric(stroke_prob_10_female) * 100,
+    SYSBP = factor(SYSBP),
+    DIABETES = factor(DIABETES),
+    BPMEDS = factor(BPMEDS)
+  )
+
+ggplot(female_heat, aes(x = SYSBP, y = AGE, fill = prob)) +
+  geom_tile(color = "white") +
+  facet_wrap(~ DIABETES, labeller = label_both) +
+  scale_fill_gradient(low = "lightblue", high = "darkred",
+                      name = "10-year risk (%)") +
+  labs(title = "Female 10-year Stroke Risk",
+       x = "Systolic BP",
+       y = "Age") +
+  theme_minimal()
+```
+
 
