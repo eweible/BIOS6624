@@ -10,6 +10,8 @@ linestretch: 2
 fig.cap: true
 header-includes:
   - \usepackage{float}
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -21,6 +23,7 @@ library(survminer)
 library(here)
 library(table1)
 library(ggplot2)
+library(patchwork)
 library(gt)
 dat_raw <- read.csv(here::here("P3/DataRaw", "frmgham2.csv"))
 ```
@@ -67,27 +70,30 @@ surv_object <- Surv(time = dat_cc$time_10, event = dat_cc$stroke_event)
 ## By sex
 fit_sex <- survfit(surv_object ~ SEX, data = dat_cc)
 p1 <- ggsurvplot(fit_sex, data = dat_cc, ylim = c(0.90, 1.00),
-           xlab = "Years", ylab = "Stroke-free survival")$plot
-survdiff(surv_object ~ SEX, data = dat_cc)
+           xlab = "Years", ylab = "Stroke-free survival")$plot + theme(legend.position = "bottom", legend.direction = "vertical")
+
+survdiff_sex <- survdiff(surv_object ~ SEX, data = dat_cc)
 
 ## By diabetes
 fit_diab <- survfit(surv_object ~ DIABETES, data = dat_cc)
 p2 <- ggsurvplot(fit_diab, data = dat_cc, ylim = c(0.90, 1.00),
-           xlab = "Years", ylab = "Stroke-free survival")$plot
-survdiff(surv_object ~ DIABETES, data = dat_cc)
+           xlab = "Years", ylab = "Stroke-free survival")$plot + theme(legend.position = "bottom", legend.direction = "vertical")
+
+survdiff_diab <- survdiff(surv_object ~ DIABETES, data = dat_cc)
 
 ## By high BP
 dat_cc <- dat_cc %>%
   mutate(HIGHBP = if_else(SYSBP >= 160, 1, 0))
 fit_bp <- survfit(Surv(time_10, stroke_event) ~ HIGHBP, data = dat_cc)
 p3 <- ggsurvplot(fit_bp, data = dat_cc, ylim = c(0.90, 1.00),
-           xlab = "Years", ylab = "Stroke-free survival")$plot
-survdiff(Surv(time_10, stroke_event) ~ HIGHBP, data = dat_cc)
+           xlab = "Years", ylab = "Stroke-free survival")$plot + theme(legend.position = "bottom", legend.direction = "vertical")
 
-library(patchwork)
-p1 | p2 | p3
+survdiff_bp <- survdiff(Surv(time_10, stroke_event) ~ HIGHBP, data = dat_cc)
+
+fig1 <- (p1 | p2 | p3) + 
+  plot_annotation(title = "Stroke-Free Survival over 10 Years by Risk Factor")
 ```
-```{r cox_ph, echo=FALSE}
+```{r cox_ph, echo=FALSE, results='hide'}
 ## Males
 dat_male <- dat_cc %>% filter(SEX == "Male")
 dat_female <- dat_cc %>% filter(SEX == "Female")
@@ -105,8 +111,7 @@ cox_male_step <- step(cox_male_full, direction = "backward",
 summary(cox_male_step)
 
 ph_male <- cox.zph(cox_male_step)
-ph_male
-ggcoxzph(ph_male)
+fig2_male <- ggcoxzph(ph_male)
   # Check PH
 
 ## Females
@@ -123,8 +128,7 @@ cox_female_step <- step(cox_female_full, direction = "backward", ,
 summary(cox_female_step)
 
 ph_female <- cox.zph(cox_female_step)
-ph_female
-ggcoxzph(ph_female)
+fig2_female <- ggcoxzph(ph_female)
   # Check PH
 ```
 ```{r prob_10yr, echo=FALSE}
@@ -264,8 +268,6 @@ combined_table <- bind_rows(female_table_final, male_table_final) %>%
   tab_options(
     row_group.as_column = FALSE
   )
-combined_table
-
 
 male_heat <- profiles_male %>%
   mutate(
@@ -286,7 +288,7 @@ female_heat <- profiles_female %>%
   )
 
 heat_all <- bind_rows(male_heat, female_heat)
-ggplot(heat_all, aes(x = SYSBP, y = AGE, fill = prob)) +
+fig3 <- ggplot(heat_all, aes(x = SYSBP, y = AGE, fill = prob)) +
   geom_tile(color = "white") +
   facet_grid(SEX ~ DIABETES, labeller = label_both) +
   scale_fill_gradient(low = "lightblue", high = "darkred",
@@ -298,7 +300,7 @@ ggplot(heat_all, aes(x = SYSBP, y = AGE, fill = prob)) +
   ) +
   theme_minimal()
 ```
-```{r time_var, echo=FALSE}
+```{r time_var, echo=FALSE, results='hide'}
 dat_long <- dat_raw %>%
   filter(PERIOD %in% c(1,2,3)) %>%
   select(RANDID, PERIOD, SEX, SYSBP, DIABETES)
@@ -312,13 +314,16 @@ dat_long %>%
   group_by(SEX, PERIOD) %>%
   summarise(diabetes_prev = mean(DIABETES == 1, na.rm = TRUE))
 
-ggplot(dat_long, aes(x = PERIOD, y = SYSBP, color = SEX)) +
+p4 <- ggplot(dat_long, aes(x = PERIOD, y = SYSBP, color = SEX)) +
   stat_summary(fun = mean, geom = "line") +
   labs(x = "Exam Period", y = "Mean Systolic BP")
 
-ggplot(dat_long, aes(x = PERIOD, y = DIABETES, color = SEX)) +
+p5 <- ggplot(dat_long, aes(x = PERIOD, y = DIABETES, color = SEX)) +
   stat_summary(fun = mean, geom = "line") +
   labs(x = "Exam Period", y = "Diabetes Prevalence")
+
+fig4 <- p4 / p5 + 
+  plot_annotation(title = "Time Varying Covariates")
 ```
 
 
@@ -366,3 +371,24 @@ Data Directory: C:/Users/weiblee/OneDrive/Documents/Anschutz/Spring 2026/6624_Ad
 table1(~ AGE + SYSBP + DIABETES + PREVCHD + BPMEDS + CURSMOKE + TOTCHOL + BMI 
        | SEX, data = dat_cc)
 ```
+
+```{r fig1, echo=FALSE}
+fig1
+```
+
+```{r fig2, echo=FALSE}
+fig2_male
+fig2_female
+```
+```{r tab2, echo=FALSE}
+combined_table
+```
+
+```{r fig3, echo=FALSE}
+fig3
+```
+
+```{r fig4, echo=FALSE}
+fig4
+```
+
