@@ -15,6 +15,7 @@ library(survminer)
 library(here)
 library(table1)
 library(ggplot2)
+library(gt)
 dat_raw <- read.csv(here::here("P3/DataRaw", "frmgham2.csv"))
 ```
 
@@ -227,8 +228,6 @@ male_tbl <- profiles_male %>%
 male_table_final <- male_tbl %>%
   pivot_wider(names_from = Profile, values_from = prob) %>%
   arrange(AGE)
-male_table_final
-
 female_tbl <- profiles_female %>%
   mutate(
     prob = as.numeric(stroke_prob_10_female) * 100
@@ -246,42 +245,92 @@ female_tbl <- profiles_female %>%
 female_table_final <- female_tbl %>%
   pivot_wider(names_from = Profile, values_from = prob) %>%
   arrange(AGE)
-female_table_final
+male_table_finaL <- male_table_final %>% mutate(SEX = "Male")
+female_table_final <- female_table_final %>% mutate(SEX = "Female")
+
+combined_table <- bind_rows(female_table_final, male_table_final) %>%
+  relocate(SEX) %>%
+  arrange(SEX, AGE) %>%
+  gt(rowname_col = "AGE", groupname_col = "SEX") %>%
+  tab_header(
+    title = "10-year Stroke Risk by Sex and Clinical Profile"
+  ) %>%
+  fmt_number(
+    columns = where(is.numeric),
+    decimals = 1
+  ) %>%
+  cols_label(
+    AGE = "Age",
+    Baseline = "Baseline",
+    `High BP` = "High BP",
+    Diabetes = "Diabetes",
+    Both = "Both",
+    Other = "Other"
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels(everything())
+  ) %>%
+  tab_options(
+    row_group.as_column = FALSE
+  )
+
+
 
 male_heat <- profiles_male %>%
   mutate(
+    SEX = "Male",
     prob = as.numeric(stroke_prob_10_male) * 100,
     SYSBP = factor(SYSBP),
     DIABETES = factor(DIABETES),
     BPMEDS = factor(BPMEDS)
   )
 
-ggplot(male_heat, aes(x = SYSBP, y = AGE, fill = prob)) +
-  geom_tile(color = "white") +
-  facet_wrap(~ DIABETES, labeller = label_both) +
-  scale_fill_gradient(low = "lightblue", high = "darkred",
-                      name = "10-year risk (%)") +
-  labs(title = "Male 10-year Stroke Risk",
-       x = "Systolic BP",
-       y = "Age") +
-  theme_minimal()
 female_heat <- profiles_female %>%
   mutate(
+    SEX = "Female",
     prob = as.numeric(stroke_prob_10_female) * 100,
     SYSBP = factor(SYSBP),
     DIABETES = factor(DIABETES),
     BPMEDS = factor(BPMEDS)
   )
 
-ggplot(female_heat, aes(x = SYSBP, y = AGE, fill = prob)) +
+heat_all <- bind_rows(male_heat, female_heat)
+ggplot(heat_all, aes(x = SYSBP, y = AGE, fill = prob)) +
   geom_tile(color = "white") +
-  facet_wrap(~ DIABETES, labeller = label_both) +
+  facet_grid(SEX ~ DIABETES, labeller = label_both) +
   scale_fill_gradient(low = "lightblue", high = "darkred",
                       name = "10-year risk (%)") +
-  labs(title = "Female 10-year Stroke Risk",
-       x = "Systolic BP",
-       y = "Age") +
+  labs(
+    title = "10-year Stroke Risk by Sex",
+    x = "Systolic BP",
+    y = "Age"
+  ) +
   theme_minimal()
+```
+
+# Time-varying patterns (BP and diabetes)
+```{r}
+dat_long <- dat_raw %>%
+  filter(PERIOD %in% c(1,2,3)) %>%
+  select(RANDID, PERIOD, SEX, SYSBP, DIABETES)
+
+dat_long %>%
+  group_by(SEX, PERIOD) %>%
+  summarise(mean_SYSBP = mean(SYSBP, na.rm = TRUE),
+            sd_SYSBP   = sd(SYSBP, na.rm = TRUE))
+
+dat_long %>%
+  group_by(SEX, PERIOD) %>%
+  summarise(diabetes_prev = mean(DIABETES == 1, na.rm = TRUE))
+
+ggplot(dat_long, aes(x = PERIOD, y = SYSBP, color = SEX)) +
+  stat_summary(fun = mean, geom = "line") +
+  labs(x = "Exam Period", y = "Mean Systolic BP")
+
+ggplot(dat_long, aes(x = PERIOD, y = DIABETES, color = SEX)) +
+  stat_summary(fun = mean, geom = "line") +
+  labs(x = "Exam Period", y = "Diabetes Prevalence")
 ```
 
 
