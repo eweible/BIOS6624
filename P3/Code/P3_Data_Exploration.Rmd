@@ -245,7 +245,7 @@ female_tbl <- profiles_female %>%
 female_table_final <- female_tbl %>%
   pivot_wider(names_from = Profile, values_from = prob) %>%
   arrange(AGE)
-male_table_finaL <- male_table_final %>% mutate(SEX = "Male")
+male_table_final <- male_table_final %>% mutate(SEX = "Male")
 female_table_final <- female_table_final %>% mutate(SEX = "Female")
 
 combined_table <- bind_rows(female_table_final, male_table_final) %>%
@@ -261,11 +261,11 @@ combined_table <- bind_rows(female_table_final, male_table_final) %>%
   ) %>%
   cols_label(
     AGE = "Age",
-    Baseline = "Baseline",
-    `High BP` = "High BP",
+    Baseline = "No Baseline Risk Factors",
+    `High BP` = "High Blood Pressure",
     Diabetes = "Diabetes",
-    Both = "Both",
-    Other = "Other"
+    Both = "High BP and Diabetes",
+    Other = "BP Medication"
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),
@@ -274,7 +274,7 @@ combined_table <- bind_rows(female_table_final, male_table_final) %>%
   tab_options(
     row_group.as_column = FALSE
   )
-
+combined_table
 
 
 male_heat <- profiles_male %>%
