@@ -1,0 +1,56 @@
+---
+output:
+  bookdown::pdf_document2:
+    toc: false
+    number_sections: false
+documentclass: article
+geometry: margin=1in
+fontsize: 12pt
+linestretch: 2
+fig.cap: true
+header-includes:
+  - \usepackage{float}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- Title here: -->
+# \textit{Framingham Longitudinal Stroke Risk Profile}
+
+<!-- Name here: -->
+Ezra Weible[^1]
+
+[^1]: Biostatistics Masters Student, Colorado School of Public Health, CU Anschutz Medical Campus
+
+## Introduction
+
+This project investigates stroke risk in the Framingham Heart Study, a long-term prospective cohort that has followed adults in Framingham, Massachusetts for cardiovascular outcomes since 1948. For this analysis, we use a subset of 4,434 participants with baseline measurements of cardiovascular risk factors and stroke outcomes. Although participants were followed for up to 24 years, this project focuses on the first 10 years of follow-up to ensure that baseline risk factors remain relevant to the outcome window. 
+
+The primary goal is to identify which baseline risk factors predict time to first stroke within 10 years, analyzed separately for males and females. A secondary aim is to estimate 10 year stroke probabilities for several clinically relevant risk profiles. Because risk factors were measured at three exam periods, an additional aim is to describe how systolic blood pressure and diabetes status change over time and to discuss how such changes might influence analyses that rely only on baseline values.
+
+## Methods
+
+All analyses will be conducted in R v4.5.2 (2025-10-31 ucrt). Participants with evidence of stroke at baseline will be excluded. Follow-up time will be defined using TIMESTRK and restricted to 10 years. Individuals who experience a non-stroke event before 10 years will be censored at the time of event. Events occurring after 10 years will be censored at 10 years. A new event indicator will be created to capture first stroke within the 10 year window.
+
+Baseline covariates include age, systolic blood pressure, diabetes, smoking status, BMI, cholesterol, coronary heart disease, and blood pressure medication use. Variables will be checked for implausible values and recoded when necessary. Missingness will be summarized descriptively. Complete case analysis will be used for the final Cox models. Analyses will be stratified by sex. Age, systolic blood pressure, and diabetes will be included *a priori*, additional baseline covariates will be evaluated using backwards selection based on AIC. Differences in final models by sex will be noted and interpreted as needed. 
+
+Kaplan–Meier curves and log-rank tests will be used to compare stroke-free survival across baseline risk factors. The primary analysis will use Cox proportional hazards models. Proportional hazards assumptions will be assessed using Schoenfeld residuals and log-minus-log survival plots. For each sex, 10 year predicted stroke probabilities will be estimated from the final Cox model for five risk profiles at ages 40, 50, and 60. The risk profiles are: 1. No baseline risk factors, 2. High systolic blood pressure ($\geq$ 160), 3. Diabetes, 4. Both high systolic blood pressure and diabetes, 5. One additional profile chosen based on model results. Although the primary analysis will only use baseline covariates, systolic blood pressure and diabetes will be summarized across the three exam periods to assess how much they change over time and if time-varying covariate models may be more appropriate.
+
+## Results
+
+
+
+## Discussion
+
+
+
+\newpage
+## Appendix 
+
+Code Directory: https://github.com/eweible/BIOS6624.git
+
+File name: P3/Code/P3_Report.Rmd
+
+Data Directory: C:/Users/weiblee/OneDrive/Documents/Anschutz/Spring 2026/6624_Advanced/Weible_Advanced/P3/DataRaw
