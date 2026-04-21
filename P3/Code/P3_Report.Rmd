@@ -20,6 +20,7 @@ library(dplyr)
 library(tidyr)
 library(survival)
 library(survminer)
+library(MASS)
 library(here)
 library(table1)
 library(ggplot2)
@@ -48,7 +49,7 @@ dat_10 <- dat_raw %>%
 dat_10 <- dat_10 %>%
   dplyr::select(
     RANDID, STROKE, SEX, time_10, stroke_event, AGE, DIABETES, SYSBP, PREVCHD, 
-    BPMEDS, CURSMOKE, TOTCHOL, BMI
+    BPMEDS, CURSMOKE, TOTCHOL, BMI, PERIOD
   ) # Restrict to needed vars
 dat_10 <- dat_10 %>%
   mutate(
@@ -61,58 +62,76 @@ dat_10 <- dat_10 %>%
 dat_cc <- dat_10 %>%
   filter(!is.na(time_10), !is.na(stroke_event)) %>%
   filter(complete.cases(
-    AGE, SYSBP, DIABETES, PREVCHD, BPMEDS, CURSMOKE, TOTCHOL, BMI
+    AGE, SYSBP, DIABETES, PREVCHD, BPMEDS, CURSMOKE, TOTCHOL, BMI, PERIOD
   )) # Complete case dataset for all vars
 ```
 ```{r km_logrank, echo=FALSE}
-surv_object <- Surv(time = dat_cc$time_10, event = dat_cc$stroke_event)
-
-## By sex
-fit_sex <- survfit(surv_object ~ SEX, data = dat_cc)
-p1 <- ggsurvplot(fit_sex, data = dat_cc, ylim = c(0.90, 1.00),
-           xlab = "Years", ylab = "Stroke-free survival")$plot + theme(legend.position = "bottom", legend.direction = "vertical")
-
-survdiff_sex <- survdiff(surv_object ~ SEX, data = dat_cc)
-
-## By diabetes
-fit_diab <- survfit(surv_object ~ DIABETES, data = dat_cc)
-p2 <- ggsurvplot(fit_diab, data = dat_cc, ylim = c(0.90, 1.00),
-           xlab = "Years", ylab = "Stroke-free survival")$plot + theme(legend.position = "bottom", legend.direction = "vertical")
-
-survdiff_diab <- survdiff(surv_object ~ DIABETES, data = dat_cc)
-
-## By high BP
 dat_cc <- dat_cc %>%
-  mutate(HIGHBP = if_else(SYSBP >= 160, 1, 0))
-fit_bp <- survfit(Surv(time_10, stroke_event) ~ HIGHBP, data = dat_cc)
-p3 <- ggsurvplot(fit_bp, data = dat_cc, ylim = c(0.90, 1.00),
-           xlab = "Years", ylab = "Stroke-free survival")$plot + theme(legend.position = "bottom", legend.direction = "vertical")
-
-survdiff_bp <- survdiff(Surv(time_10, stroke_event) ~ HIGHBP, data = dat_cc)
-
-fig1 <- (p1 | p2 | p3) + 
-  plot_annotation(title = "Stroke-Free Survival over 10 Years by Risk Factor")
-```
-```{r cox_ph, echo=FALSE, results='hide'}
-## Males
+  filter(PERIOD == 1) %>%
+  mutate(HIGHBP = if_else(SYSBP >= 160, "Yes", "No"))
 dat_male <- dat_cc %>% filter(SEX == "Male")
 dat_female <- dat_cc %>% filter(SEX == "Female")
 
+# surv_object <- Surv(time = dat_cc$time_10, event = dat_cc$stroke_event)
+surv_object_m <- Surv(time = dat_male$time_10, event = dat_male$stroke_event)
+surv_object_f <- Surv(time = dat_female$time_10, event = dat_female$stroke_event)
+
+# ## By sex
+# fit_sex <- survfit(surv_object ~ SEX, data = dat_cc)
+# p1 <- ggsurvplot(fit_sex, data = dat_cc, ylim = c(0.90, 1.00),
+#            xlab = "Years", ylab = "Stroke-free survival")$plot + theme(legend.position = "bottom", legend.direction = "vertical")
+# 
+# survdiff_sex <- survdiff(surv_object ~ SEX, data = dat_cc)
+
+## By diabetes
+fit_diab_m <- survfit(surv_object_m ~ DIABETES, data = dat_male)
+p2_m <- ggsurvplot(fit_diab_m, data = dat_male, ylim = c(0.90, 1.00),
+           xlab = "", ylab = "Survival (Males)")$plot + theme(legend.position = "bottom", legend.direction = "vertical")
+survdiff_diab_m <- survdiff(surv_object_m ~ DIABETES, data = dat_male)
+fit_diab_f <- survfit(surv_object_f ~ DIABETES, data = dat_female)
+p2_f <- ggsurvplot(fit_diab_f, data = dat_female, ylim = c(0.90, 1.00),
+           xlab = "", ylab = "Survival (Females)")$plot + 
+  theme(legend.position = "none", axis.text.x = element_blank(), axis.line.x = element_blank())
+survdiff_diab_f <- survdiff(surv_object_f ~ DIABETES, data = dat_female)
+
+## By high BP
+fit_bp_m <- survfit(Surv(time_10, stroke_event) ~ HIGHBP, data = dat_male)
+p3_m <- ggsurvplot(fit_bp_m, data = dat_male, ylim = c(0.90, 1.00),
+           xlab = "Years", ylab = "")$plot + theme(legend.position = "bottom", legend.direction = "vertical")
+survdiff_bp_m <- survdiff(Surv(time_10, stroke_event) ~ HIGHBP, data = dat_male)
+fit_bp_f <- survfit(Surv(time_10, stroke_event) ~ HIGHBP, data = dat_female)
+p3_f <- ggsurvplot(fit_bp_f, data = dat_female, ylim = c(0.90, 1.00),
+           xlab = "", ylab = "")$plot + 
+  theme(legend.position = "none", axis.text.x = element_blank(), axis.line.x = element_blank())
+survdiff_bp_f <- survdiff(Surv(time_10, stroke_event) ~ HIGHBP, data = dat_female)
+
+## By smoking
+fit_smoke_m <- survfit(surv_object_m ~ CURSMOKE, data = dat_male)
+p4_m <- ggsurvplot(fit_smoke_m, data = dat_male, ylim = c(0.90, 1.00),
+           xlab = "", ylab = "")$plot + theme(legend.position = "bottom", legend.direction = "vertical")
+survdiff_smoke_m <- survdiff(surv_object_m ~ CURSMOKE, data = dat_male)
+fit_smoke_f <- survfit(surv_object_f ~ CURSMOKE, data = dat_female)
+p4_f <- ggsurvplot(fit_smoke_f, data = dat_female, ylim = c(0.90, 1.00),
+           xlab = "", ylab = "")$plot + 
+  theme(legend.position = "none", axis.text.x  = element_blank(), axis.line.x = element_blank())
+survdiff_smoke_f <- survdiff(surv_object_f ~ CURSMOKE, data = dat_female)
+
+fig1 <- (p2_f | p3_f | p4_f)/(p2_m | p3_m | p4_m) + 
+  plot_annotation(title = "Stroke-Free Survival over 10 Years by Risk Factor")
+fig1
+```
+```{r cox_ph, echo=FALSE, results='hide'}
+## Males
 cox_male_full <- coxph(Surv(time_10, stroke_event) ~ AGE + SYSBP + DIABETES + 
                          PREVCHD + BPMEDS + CURSMOKE + TOTCHOL + BMI, 
                        data = dat_male) # Full model
 cox_male_min <- coxph(Surv(time_10, stroke_event) ~ AGE + DIABETES + SYSBP,
                       data = dat_male) # Smallest model
-cox_male_step <- step(cox_male_full, direction = "backward", 
+cox_male_step <- stepAIC(cox_male_full, direction = "backward", 
                       scope = list(lower = formula(cox_male_min),
                                    upper = formula(cox_male_full)), k = 2)
   # Backward selection (AIC)
-    # Male: Age, SysBP, Diabetes, BP Meds, Cur Smoke, Tot Chol
-summary(cox_male_step)
-
-ph_male <- cox.zph(cox_male_step)
-fig2_male <- ggcoxzph(ph_male)
-  # Check PH
+    # Male: Age, SysBP, Diabetes, Cur Smoke
 
 ## Females
 cox_female_full <- coxph(Surv(time_10, stroke_event) ~ AGE + SYSBP + DIABETES +
@@ -124,10 +143,26 @@ cox_female_step <- step(cox_female_full, direction = "backward", ,
                       scope = list(lower = formula(cox_female_min),
                                    upper = formula(cox_female_full)), k = 2)
   # Backward selection (AIC)
-    # Female: Age, SysBP, Diabetes, BP Meds, Prev CHD
-summary(cox_female_step)
+    # Female: Age, SysBP, Diabetes, *Added CurSmoke to match with males & because AIC was not dramatically different
 
-ph_female <- cox.zph(cox_female_step)
+dat_cc <- dat_10 %>%
+  filter(!is.na(time_10), !is.na(stroke_event)) %>%
+  filter(complete.cases(
+    AGE, SYSBP, DIABETES, CURSMOKE, PERIOD
+  )) %>% # Complete case dataset for all vars
+  filter(PERIOD == 1)
+dat_male <- dat_cc %>% filter(SEX == "Male")
+dat_female <- dat_cc %>% filter(SEX == "Female")
+
+summary(cox_male <- coxph(Surv(time_10, stroke_event) ~ AGE + SYSBP + DIABETES + CURSMOKE,
+    data = dat_male))
+ph_male <- cox.zph(cox_male)
+fig2_male <- ggcoxzph(ph_male)
+  # Check PH
+
+summary(cox_female <- coxph(Surv(time_10, stroke_event) ~ AGE + SYSBP + DIABETES + CURSMOKE,
+    data = dat_female))
+ph_female <- cox.zph(cox_female)
 fig2_female <- ggcoxzph(ph_female)
   # Check PH
 ```
@@ -155,8 +190,8 @@ profiles_male_other <- expand.grid(
     SYSBP = 120,
     DIABETES = "No",
     PREVCHD = "No",
-    BPMEDS = "Yes",
-    CURSMOKE = "No",
+    BPMEDS = "No",
+    CURSMOKE = "Yes",
     TOTCHOL = mean(dat_male$TOTCHOL, na.rm = TRUE),
     BMI = mean(dat_male$BMI, na.rm = TRUE)
   ) # Other profile: BP meds
@@ -166,8 +201,8 @@ base_male <- survfit(cox_male_step, newdata = profiles_male)
   # Baseline survival
 pred_male <- summary(base_male, times = 10)
   # Extract survival at 10 years
-stroke_prob_10_male <- 1 - pred_male$surv
-  # 10-year stroke probability = 1 - S(10)
+stroke_prob_10_male <- pred_male$surv
+  # 10-year stroke probability = S(10)
 
 ## Females
 profiles_female <- expand.grid(
@@ -190,8 +225,8 @@ profiles_female_other <- expand.grid(
     SYSBP = 120,
     DIABETES = "No",
     PREVCHD = "No",
-    BPMEDS = "Yes",
-    CURSMOKE = "No",
+    BPMEDS = "No",
+    CURSMOKE = "Yes",
     TOTCHOL = mean(dat_female$TOTCHOL, na.rm = TRUE),
     BMI = mean(dat_female$BMI, na.rm = TRUE)
   ) # Other profile: BP meds
@@ -201,8 +236,8 @@ base_female <- survfit(cox_female_step, newdata = profiles_female)
   # Baseline survival
 pred_female <- summary(base_female, times = 10)
   # Extract survival at 10 years
-stroke_prob_10_female <- 1 - pred_female$surv
-  # 10-year stroke probability = 1 - S(10)
+stroke_prob_10_female <- pred_female$surv
+  # 10-year stroke probability = S(10)
 ```
 ```{r vis_10yr, echo=FALSE}
 male_tbl <- profiles_male %>%
@@ -211,14 +246,14 @@ male_tbl <- profiles_male %>%
   ) %>% # Convert to percent
   mutate(
     Profile = case_when(
-      BPMEDS == "Yes" ~ "Other",
+      CURSMOKE == "Yes" ~ "Other",
       SYSBP == 120 & DIABETES == "No" ~ "Baseline",
       SYSBP == 160 & DIABETES == "No" ~ "High BP",
       SYSBP == 120 & DIABETES == "Yes" ~ "Diabetes",
       SYSBP == 160 & DIABETES == "Yes" ~ "Both"
     )
   ) %>%
-  select(AGE, Profile, prob)
+  dplyr::select(AGE, Profile, prob)
 male_table_final <- male_tbl %>%
   pivot_wider(names_from = Profile, values_from = prob) %>%
   arrange(AGE)
@@ -228,14 +263,14 @@ female_tbl <- profiles_female %>%
   ) %>% # Convert to percent
   mutate(
     Profile = case_when(
-      BPMEDS == "Yes" ~ "Other",
+      CURSMOKE == "Yes" ~ "Other",
       SYSBP == 120 & DIABETES == "No"  ~ "Baseline",
       SYSBP == 160 & DIABETES == "No"  ~ "High BP",
       SYSBP == 120 & DIABETES == "Yes" ~ "Diabetes",
       SYSBP == 160 & DIABETES == "Yes" ~ "Both"
     )
   ) %>%
-  select(AGE, Profile, prob)
+  dplyr::select(AGE, Profile, prob)
 female_table_final <- female_tbl %>%
   pivot_wider(names_from = Profile, values_from = prob) %>%
   arrange(AGE)
@@ -259,7 +294,7 @@ combined_table <- bind_rows(female_table_final, male_table_final) %>%
     `High BP` = "High Blood Pressure",
     Diabetes = "Diabetes",
     Both = "High BP and Diabetes",
-    Other = "BP Medication"
+    Other = "Current Smoker"
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),
@@ -303,7 +338,7 @@ fig3 <- ggplot(heat_all, aes(x = SYSBP, y = AGE, fill = prob)) +
 ```{r time_var, echo=FALSE, results='hide'}
 dat_long <- dat_raw %>%
   filter(PERIOD %in% c(1,2,3)) %>%
-  select(RANDID, PERIOD, SEX, SYSBP, DIABETES)
+  dplyr::select(RANDID, PERIOD, SEX, SYSBP, DIABETES)
 
 dat_long %>%
   group_by(SEX, PERIOD) %>%
@@ -367,26 +402,22 @@ File name: P3/Code/P3_Report.Rmd
 
 Data Directory: C:/Users/weiblee/OneDrive/Documents/Anschutz/Spring 2026/6624_Advanced/Weible_Advanced/P3/DataRaw
 
-```{r tab1, echo=FALSE}
+```{r tab1, echo=FALSE, results='hide'}
 table1(~ AGE + SYSBP + DIABETES + PREVCHD + BPMEDS + CURSMOKE + TOTCHOL + BMI 
        | SEX, data = dat_cc)
 ```
 
-```{r fig1, echo=FALSE}
-fig1
-```
+![](Figures/Table1.png)
+
+![](Figures/KM.png)
 
 ```{r fig2, echo=FALSE}
 fig2_male
 fig2_female
 ```
-```{r tab2, echo=FALSE}
-combined_table
-```
+![](Figures/Risk_Profiles.png)
 
-```{r fig3, echo=FALSE}
-fig3
-```
+![](Figures/Heatmap.png)
 
 ```{r fig4, echo=FALSE}
 fig4
