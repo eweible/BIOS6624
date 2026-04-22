@@ -364,9 +364,9 @@ fig4 <- p4 / p5 +
 
 ## Introduction
 
-This project investigates stroke risk in the Framingham Heart Study, a long-term prospective cohort that has followed adults in Framingham, Massachusetts for cardiovascular outcomes since 1948. For this analysis, we use a subset of 4,434 participants with baseline measurements of cardiovascular risk factors and stroke outcomes. Although participants were followed for up to 24 years, this project focuses on the first 10 years of follow-up to ensure that baseline risk factors remain relevant to the outcome window. 
+This project investigates stroke risk in the Framingham Heart Study, a long-term prospective cohort that has followed adults in Framingham, Massachusetts for cardiovascular outcomes since 1948. This analysis uses a subset of 4,434 participants with baseline measurements of cardiovascular risk factors and stroke outcomes. To ensure that covariates reflect clinically relevant exposure windows, this project focuses on the first 10 years of follow-up. 
 
-The primary goal is to identify which baseline risk factors predict time to first stroke within 10 years, analyzed separately for males and females. A secondary aim is to estimate 10 year stroke probabilities for several clinically relevant risk profiles. Because risk factors were measured at three exam periods, an additional aim is to describe how systolic blood pressure and diabetes status change over time and to discuss how such changes might influence analyses that rely only on baseline values.
+The primary objective is to identify baseline predictors of time to first stroke, analyzed separately for males and females. A secondary aim is to estimate 10 year stroke probabilities for several clinically relevant risk profiles, defined by age, systolic blood pressure (BP), and diabetes and smoking status. Because systolic BP and diabetes were measured at three exam periods, an additional aim is to describe how these risk factors change over time and to discuss the implications for analyses that rely only on baseline values.
 
 ## Methods
 
