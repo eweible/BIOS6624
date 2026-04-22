@@ -37,7 +37,7 @@ Ezra Weible[^1]
 
 [^1]: Biostatistics Masters Student, Colorado School of Public Health, CU Anschutz Medical Campus
 
-```{r dat_cleaning, echo=FALSE}
+```{r dat_cleaning, echo=FALSE, message=FALSE}
 dat_10 <- dat_raw %>%
   filter(!(STROKE == 1 & TIMESTRK == 0)) %>%
     # Remove baseline stroke
@@ -65,7 +65,7 @@ dat_cc <- dat_10 %>%
     AGE, SYSBP, DIABETES, PREVCHD, BPMEDS, CURSMOKE, TOTCHOL, BMI, PERIOD
   )) # Complete case dataset for all vars
 ```
-```{r km_logrank, echo=FALSE}
+```{r km_logrank, echo=FALSE, message=FALSE}
 dat_cc <- dat_cc %>%
   filter(PERIOD == 1) %>%
   mutate(HIGHBP = if_else(SYSBP >= 160, "Yes", "No"))
@@ -119,7 +119,7 @@ survdiff_smoke_f <- survdiff(surv_object_f ~ CURSMOKE, data = dat_female)
 fig1 <- (p2_f | p3_f | p4_f)/(p2_m | p3_m | p4_m) + 
   plot_annotation(title = "Stroke-Free Survival over 10 Years by Risk Factor")
 ```
-```{r cox_ph, echo=FALSE, results='hide'}
+```{r cox_ph, echo=FALSE, message=FALSE, results='hide'}
 ## Males
 cox_male_full <- coxph(Surv(time_10, stroke_event) ~ AGE + SYSBP + DIABETES + 
                          PREVCHD + BPMEDS + CURSMOKE + TOTCHOL + BMI, 
@@ -165,7 +165,7 @@ ph_female <- cox.zph(cox_female)
 fig2_female <- ggcoxzph(ph_female)
   # Check PH
 ```
-```{r prob_10yr, echo=FALSE}
+```{r prob_10yr, echo=FALSE, message=FALSE}
 ages <- c(40, 50, 60)
 
 ## Males
@@ -238,7 +238,7 @@ pred_female <- summary(base_female, times = 10)
 stroke_prob_10_female <- pred_female$surv
   # 10-year stroke probability = S(10)
 ```
-```{r vis_10yr, echo=FALSE}
+```{r vis_10yr, echo=FALSE, message=FALSE}
 male_tbl <- profiles_male %>%
   mutate(
     prob = as.numeric(stroke_prob_10_male) * 100
@@ -334,7 +334,7 @@ fig3 <- ggplot(heat_all, aes(x = SYSBP, y = AGE, fill = prob)) +
   ) +
   theme_minimal()
 ```
-```{r time_var, echo=FALSE, results='hide'}
+```{r time_var, echo=FALSE, message=FALSE, results='hide'}
 dat_long <- dat_raw %>%
   filter(PERIOD %in% c(1,2,3)) %>%
   dplyr::select(RANDID, PERIOD, SEX, SYSBP, DIABETES)
@@ -400,7 +400,9 @@ To assess whether time-varying covariate models might be warrented in future res
 
 ## Discussion
 
+This paper evaluated baseline predictors of 10 year stroke risk in the Framingham Heart Study and generated clinically interpretable risk estimates for several common risk profiles. Across all analyses, systolic BP emerged as the strongest predictor of stroke, with diabetes contributing additional risk (particularly among males). Predicted 10 year stroke probabilities highlight the impact of elevated BP and the compounded risk when it occurs with diabetes. Risk increased steadily with age and was consistently higher in males, though sex differences were modest overall. 
 
+Although the primary analysis relied on baseline covariates, systolic BP and diabetes both changed meaningfully across exam periods, with rising blood pressure and increasing diabetes prevalence. These shifts suggest that time-varying covariate models may be more accurate in future work. This is amongst other limitations that should be considered. Complete-case analysis may introduce bias related to unmeasured factors. Competing risks such as death were not explicitly modeled, which may overestimate stroke risk. Additionally, the Framingham cohort may limit generalizability to more diverse groups. Dispite these constraints, there is clear evidence of baseline predictors of stroke and clinically relevant 10 year risk estimates. 
 
 \newpage
 ## Appendix 
