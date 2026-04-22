@@ -118,7 +118,6 @@ survdiff_smoke_f <- survdiff(surv_object_f ~ CURSMOKE, data = dat_female)
 
 fig1 <- (p2_f | p3_f | p4_f)/(p2_m | p3_m | p4_m) + 
   plot_annotation(title = "Stroke-Free Survival over 10 Years by Risk Factor")
-fig1
 ```
 ```{r cox_ph, echo=FALSE, results='hide'}
 ## Males
@@ -385,16 +384,19 @@ Finally, systolic BP and diabetes status were summarized across the three exam p
 
 ## Results
 
-KM:
-* Sex: KM curves overlap throughout (no difference in survival, supported by log-rank X^2 = 0.4, p = 0.5).
-* Diabetes: KM curves overlap mostly in the first 5 years (small numbers of early events). Diverge strongly later (log-rank: X^2 = 34.3, p < 0.001).
-* BP: Strong visual difference on KM curves and log-rank (high BP has much higher stroke rate, separate cleanly). X^2 = 149, p << 0.001.
+**Table 1** summarizes baseline characteristics for the analytic dataset. Males and females were similar in age and diabetes prevalence, though females had slightly higher systolic BP and total cholesterol. Smoking was substantially more common in males (60.5\% vs. 40.5\%).
 
-Cox:
-* Males: diabetes and sysBP dominate the stroke risk, age and BP meds also contribute, CURSMOKE and TOTCHOL are marginal/borderline may not actually need to be included
-* Females: diabetes is a weaker predictor than for men, sysBP still dominates. Age, BP meds, and PREVCHD also contribute
-* PH tests look good overall. Only diabetes mildly violates for men (p = 0.008, more curvy), globally is good for each.
+Kaplan-Meier curves demonstrated differences in stroke-free survival across several baseline risk factors (**Figure 1**). Diabetes and high systolic BP showed the strongest separation of survival curves, while smoking had minimal impact. Among males, the difference in diabetes was pronounced ($X^2$ = 28.5, p << 0.001), with a more modest effect in females ($X^2$ = 6.9, p = 0.009). High systolic BP ($\geq$ 160 mmHg) showed the largest differences overall, with highly significant log-rank tests for both males ($X^2$ = 68.4, p << 0.001) and females ($X^2$ = 47.7, p << 0.001). In contrast, smoking status was not associated with stroke-free survival in either males or females (p = 0.5; 0.4). 
 
+Separate Cox proportional hazards models were fit for males and females. Age, systolic BP, and diabetes were included *a priori*, and backward selection supported retaining smoking status for males. To aid in comparability across sexes, smoking was also included in the female model. 
+
+For males, age, systolic BP, diabetes, and smoking were all significant predictors of stroke. For every one year increase in age, the hazard of stroke increased by 6.6\% on average (HR = 1.07, 95\% CI: 1.03, 1.11). Each 1 mmHg increase in systolic BP was associated with a 3.4\% increase in hazard (HR = 1.03; 95\% CI: 1.02, 1.05). Diabetes was a strong predictor, with diabetic men experiencing nearly five times the hazard of non-diabetic men (HR = 4.81, 95\% CI: 2.10, 11.01). Smoking was also associated with elevated risk (HR = 1.92, 95\% CI: 1.04, 3.57). The proportional hazards assumption was generally met. Diabetes showed mild deviation (p = 0.048), but the global test was non-significant (p = 0.23), validated by visual inspection (**Figure 2**).
+
+For females, age and systolic BP were strong predictors of stroke. Each additional year of age increased the hazard by 7.8\% (HR = 1.08, 95\% CI: 1.04, 1.12), and each 1 mmHg increase in systolic BP increased the hazard by 2.6\% (HR = 1.03, 95\% CI: 1.02, 1.04). Diabetes and smoking were not statistically significant predictors in females (p = 0.25; 0.21). Proportional hazards assumptions were all met with a global p - 0.96 (**Figure 2**).
+
+Predicted 10 year stroke-free survival was estimated for five risk profiles (**Table 2**). Across all profiles, stroke risk increased with age and was consistently higher in males than females (**Figure 3**). High systolic BP produced the largest increase in predicted risk for both sexes. For example, among males aged 60, stroke-free survival declined from 98.9\% for no baseline risk factors to 95.9\% with high BP and 81.6\% with high BP and diabetes combined. Diabetes had a stronger impact in males than females, consistent with the Cox model results. 
+
+To assess whether time-varying covariate models might be warrented in future research, systolic BP and diabetes were summarized across the three exam periods (**Figure 4**). Mean systolic BP increased steadily over time for both sexes, rising approximately 7 mmHg from period 1 to 3. Diabetes prevalence also increased from roughly 3\% at period 1 to 8\% at period 3. 
 
 ## Discussion
 
