@@ -69,9 +69,12 @@ dat_cc <- dat_10 %>%
 ```{r km_logrank, echo=FALSE, message=FALSE}
 dat_cc <- dat_cc %>%
   filter(PERIOD == 1) %>%
+    # Filter to first instance
   mutate(HIGHBP = if_else(SYSBP >= 160, "Yes", "No"))
+  # Create high BP var
 dat_male <- dat_cc %>% filter(SEX == "Male")
 dat_female <- dat_cc %>% filter(SEX == "Female")
+  # Separate by sex
 
 dat_lab <- dat_cc %>%
   rename(
@@ -84,29 +87,26 @@ dat_lab <- dat_cc %>%
     `Total Cholesterol` = TOTCHOL,
     `Body Mass Index` = BMI,
     `High_BP` = HIGHBP
-  ) %>%
+  ) %>% # Add labels for figures
   mutate(
     `High_BP` = factor(`High_BP`, labels = c("No", "Yes"))
   )
 dat_male_lab <- dat_lab %>% filter(SEX == "Male")
 dat_female_lab <- dat_lab %>% filter(SEX == "Female")
+  # Separate by sex
 
-# surv_object <- Surv(time = dat_cc$time_10, event = dat_cc$stroke_event)
 surv_object_m <- Surv(time = dat_male_lab$time_10, event = dat_male_lab$stroke_event)
 surv_object_f <- Surv(time = dat_female_lab$time_10, event = dat_female_lab$stroke_event)
-
-# ## By sex
-# fit_sex <- survfit(surv_object ~ SEX, data = dat_cc)
-# p1 <- ggsurvplot(fit_sex, data = dat_cc, ylim = c(0.90, 1.00),
-#            xlab = "Years", ylab = "Stroke-free survival")$plot + theme(legend.position = "bottom", legend.direction = "vertical")
-# 
-# survdiff_sex <- survdiff(surv_object ~ SEX, data = dat_cc)
+  # Survival objects by sex
 
 ## By diabetes
 fit_diab_m <- survfit(surv_object_m ~ Diabetes, data = dat_male_lab)
+  # Survival fit
 p2_m <- ggsurvplot(fit_diab_m, data = dat_male_lab, ylim = c(0.90, 1.00),
            xlab = "", ylab = "Survival (Males)")$plot + theme(legend.position = "bottom", legend.direction = "vertical")
+  # Plot
 survdiff_diab_m <- survdiff(surv_object_m ~ Diabetes, data = dat_male_lab)
+  # Test
 fit_diab_f <- survfit(surv_object_f ~ Diabetes, data = dat_female_lab)
 p2_f <- ggsurvplot(fit_diab_f, data = dat_female_lab, ylim = c(0.90, 1.00),
            xlab = "", ylab = "Survival (Females)")$plot + 
@@ -137,6 +137,7 @@ survdiff_smoke_f <- survdiff(surv_object_f ~ `Current_Smoker`, data = dat_female
 
 fig1 <- (p2_f | p3_f | p4_f)/(p2_m | p3_m | p4_m) + 
   plot_annotation(title = "Stroke-Free Survival over 10 Years by Risk Factor")
+  # Combine plots
 ```
 ```{r cox_ph, echo=FALSE, message=FALSE, results='hide'}
 ## Males
@@ -171,6 +172,7 @@ dat_cc <- dat_10 %>%
   filter(PERIOD == 1)
 dat_male <- dat_cc %>% filter(SEX == "Male")
 dat_female <- dat_cc %>% filter(SEX == "Female")
+  # Separate by sex
 
 dat_lab <- dat_cc %>%
   filter(PERIOD == 1) %>%
@@ -184,39 +186,43 @@ dat_lab <- dat_cc %>%
     `Current Smoker` = CURSMOKE,
     `Total Cholesterol` = TOTCHOL,
     `Body Mass Index` = BMI
-  )
+  ) # Add labels for plots
 dat_male_lab <- dat_lab %>% filter(SEX == "Male")
 dat_female_lab <- dat_lab %>% filter(SEX == "Female")
 
 summary(cox_male <- coxph(Surv(time_10, stroke_event) ~ Age + `Systolic BP` + Diabetes + `Current Smoker`,
     data = dat_male_lab))
+  # Summarize Cox model
 ph_male <- cox.zph(cox_male)
-fig2_male <- ggcoxzph(ph_male)
   # Check PH
+fig2_male <- ggcoxzph(ph_male)
+  # Check PH visually
 
 summary(cox_female <- coxph(Surv(time_10, stroke_event) ~ Age + `Systolic BP` + Diabetes + `Current Smoker`,
     data = dat_female_lab))
+  # Summarize Cox model
 ph_female <- cox.zph(cox_female)
-fig2_female <- ggcoxzph(ph_female)
   # Check PH
+fig2_female <- ggcoxzph(ph_female)
+  # Check PH visually
 
 p1_m <- fig2_male[["1"]] + labs(y = "Age") + theme(axis.title.y = element_text(face = "bold"))
 p2_m <- fig2_male[["2"]] + labs(y = "Systolic BP") + theme(axis.title.y = element_text(face = "bold"))
 p3_m <- fig2_male[["3"]] + labs(y = "Diabetes") + theme(axis.title.y = element_text(face = "bold"))
 p4_m <- fig2_male[["4"]] + labs(y = "Current Smoker") + theme(axis.title.y = element_text(face = "bold"))
-
+  # Separate male figures with labels
 p1_f <- fig2_female[["1"]] + theme(axis.title.y  = element_blank())
 p2_f <- fig2_female[["2"]] + theme(axis.title.y  = element_blank())
 p3_f <- fig2_female[["3"]] + theme(axis.title.y  = element_blank())
 p4_f <- fig2_female[["4"]] + theme(axis.title.y  = element_blank())
-
+  # Separate female figures
 row1 <- plot_grid(p1_m, p1_f, ncol = 2)
 row2 <- plot_grid(p2_m, p2_f, ncol = 2)
 row3 <- plot_grid(p3_m, p3_f, ncol = 2)
 row4 <- plot_grid(p4_m, p4_f, ncol = 2)
-
 main_grid <- plot_grid(row1, row2, row3, row4, ncol = 1,
                        label_x = 0, hjust = 0)
+  # COmbine figures
 header <- plot_grid(
   ggdraw() + draw_label("Male", fontface = "bold"),
   ggdraw() + draw_label("Female", fontface = "bold"),
@@ -227,7 +233,7 @@ fig2 <- plot_grid(
   main_grid,
   ncol = 1,
   rel_heights = c(0.1, 1)
-)
+) # Reformat
 ```
 ```{r prob_10yr, echo=FALSE, message=FALSE}
 ages <- c(40, 50, 60)
@@ -315,11 +321,11 @@ male_tbl <- profiles_male %>%
       SYSBP == 120 & DIABETES == "Yes" ~ "Diabetes",
       SYSBP == 160 & DIABETES == "Yes" ~ "Both"
     )
-  ) %>%
+  ) %>% # Create orofiles 
   dplyr::select(AGE, Profile, prob)
 male_table_final <- male_tbl %>%
   pivot_wider(names_from = Profile, values_from = prob) %>%
-  arrange(AGE)
+  arrange(AGE) # Add to table
 female_tbl <- profiles_female %>%
   mutate(
     prob = as.numeric(stroke_prob_10_female) * 100
@@ -332,14 +338,14 @@ female_tbl <- profiles_female %>%
       SYSBP == 120 & DIABETES == "Yes" ~ "Diabetes",
       SYSBP == 160 & DIABETES == "Yes" ~ "Both"
     )
-  ) %>%
+  ) %>% # Create profiles
   dplyr::select(AGE, Profile, prob)
 female_table_final <- female_tbl %>%
   pivot_wider(names_from = Profile, values_from = prob) %>%
-  arrange(AGE)
+  arrange(AGE) # Add to table
 male_table_final <- male_table_final %>% mutate(SEX = "Male")
 female_table_final <- female_table_final %>% mutate(SEX = "Female")
-
+  # Finalize individual tables
 combined_table <- bind_rows(female_table_final, male_table_final) %>%
   relocate(SEX) %>%
   arrange(SEX, AGE) %>%
@@ -368,7 +374,7 @@ combined_table <- bind_rows(female_table_final, male_table_final) %>%
   ) %>% 
   tab_footnote(
     footnote = "Table 2: Predicted survival probabilities were generated from sex-specific Cox proportional hazards models using baseline age, systolic BP, diabetes, and smoking status. Five predefined clinical profiles were assessed for three ages. High systolic BP is defined as 160 mmHg." 
-  )
+  ) # Combine tables
 
 male_heat <- profiles_male %>%
   mutate(
@@ -377,7 +383,7 @@ male_heat <- profiles_male %>%
     SYSBP = factor(SYSBP),
     DIABETES = factor(DIABETES),
     BPMEDS = factor(BPMEDS)
-  )
+  ) # Create values for heatmap
 
 female_heat <- profiles_female %>%
   mutate(
@@ -386,7 +392,7 @@ female_heat <- profiles_female %>%
     SYSBP = factor(SYSBP),
     DIABETES = factor(DIABETES),
     BPMEDS = factor(BPMEDS)
-  )
+  ) # Create values for heatmap
 
 heat_all <- bind_rows(male_heat, female_heat)
 fig3 <- ggplot(heat_all, aes(x = SYSBP, y = AGE, fill = prob)) +
@@ -405,15 +411,17 @@ fig3 <- ggplot(heat_all, aes(x = SYSBP, y = AGE, fill = prob)) +
 dat_long <- dat_raw %>%
   filter(PERIOD %in% c(1,2,3)) %>%
   dplyr::select(RANDID, PERIOD, SEX, SYSBP, DIABETES)
-
+  
 dat_long %>%
   group_by(SEX, PERIOD) %>%
   summarise(mean_SYSBP = mean(SYSBP, na.rm = TRUE),
             sd_SYSBP   = sd(SYSBP, na.rm = TRUE))
+  # Get sysBP changes
 
 dat_long %>%
   group_by(SEX, PERIOD) %>%
   summarise(diabetes_prev = mean(DIABETES == 1, na.rm = TRUE))
+  # Get diabetes changes
 
 p4 <- ggplot(dat_long, aes(x = PERIOD, y = SYSBP, color = SEX)) +
   stat_summary(fun = mean, geom = "line") +
