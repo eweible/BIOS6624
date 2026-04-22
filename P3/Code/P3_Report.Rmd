@@ -25,6 +25,7 @@ library(here)
 library(table1)
 library(ggplot2)
 library(patchwork)
+library(cowplot)
 library(gt)
 dat_raw <- read.csv(here::here("P3/DataRaw", "frmgham2.csv"))
 ```
@@ -72,9 +73,27 @@ dat_cc <- dat_cc %>%
 dat_male <- dat_cc %>% filter(SEX == "Male")
 dat_female <- dat_cc %>% filter(SEX == "Female")
 
+dat_lab <- dat_cc %>%
+  rename(
+    `Age` = AGE,
+    `Systolic BP` = SYSBP,
+    `Diabetes` = DIABETES,
+    `Prior CHD` = PREVCHD,
+    `On BP Meds` = BPMEDS,
+    `Current_Smoker` = CURSMOKE,
+    `Total Cholesterol` = TOTCHOL,
+    `Body Mass Index` = BMI,
+    `High_BP` = HIGHBP
+  ) %>%
+  mutate(
+    `High_BP` = factor(`High_BP`, labels = c("No", "Yes"))
+  )
+dat_male_lab <- dat_lab %>% filter(SEX == "Male")
+dat_female_lab <- dat_lab %>% filter(SEX == "Female")
+
 # surv_object <- Surv(time = dat_cc$time_10, event = dat_cc$stroke_event)
-surv_object_m <- Surv(time = dat_male$time_10, event = dat_male$stroke_event)
-surv_object_f <- Surv(time = dat_female$time_10, event = dat_female$stroke_event)
+surv_object_m <- Surv(time = dat_male_lab$time_10, event = dat_male_lab$stroke_event)
+surv_object_f <- Surv(time = dat_female_lab$time_10, event = dat_female_lab$stroke_event)
 
 # ## By sex
 # fit_sex <- survfit(surv_object ~ SEX, data = dat_cc)
@@ -84,37 +103,37 @@ surv_object_f <- Surv(time = dat_female$time_10, event = dat_female$stroke_event
 # survdiff_sex <- survdiff(surv_object ~ SEX, data = dat_cc)
 
 ## By diabetes
-fit_diab_m <- survfit(surv_object_m ~ DIABETES, data = dat_male)
-p2_m <- ggsurvplot(fit_diab_m, data = dat_male, ylim = c(0.90, 1.00),
+fit_diab_m <- survfit(surv_object_m ~ Diabetes, data = dat_male_lab)
+p2_m <- ggsurvplot(fit_diab_m, data = dat_male_lab, ylim = c(0.90, 1.00),
            xlab = "", ylab = "Survival (Males)")$plot + theme(legend.position = "bottom", legend.direction = "vertical")
-survdiff_diab_m <- survdiff(surv_object_m ~ DIABETES, data = dat_male)
-fit_diab_f <- survfit(surv_object_f ~ DIABETES, data = dat_female)
-p2_f <- ggsurvplot(fit_diab_f, data = dat_female, ylim = c(0.90, 1.00),
+survdiff_diab_m <- survdiff(surv_object_m ~ Diabetes, data = dat_male_lab)
+fit_diab_f <- survfit(surv_object_f ~ Diabetes, data = dat_female_lab)
+p2_f <- ggsurvplot(fit_diab_f, data = dat_female_lab, ylim = c(0.90, 1.00),
            xlab = "", ylab = "Survival (Females)")$plot + 
   theme(legend.position = "none", axis.text.x = element_blank(), axis.line.x = element_blank())
-survdiff_diab_f <- survdiff(surv_object_f ~ DIABETES, data = dat_female)
+survdiff_diab_f <- survdiff(surv_object_f ~ Diabetes, data = dat_female_lab)
 
 ## By high BP
-fit_bp_m <- survfit(Surv(time_10, stroke_event) ~ HIGHBP, data = dat_male)
-p3_m <- ggsurvplot(fit_bp_m, data = dat_male, ylim = c(0.90, 1.00),
+fit_bp_m <- survfit(Surv(time_10, stroke_event) ~ `High_BP`, data = dat_male_lab)
+p3_m <- ggsurvplot(fit_bp_m, data = dat_male_lab, ylim = c(0.90, 1.00),
            xlab = "Years", ylab = "")$plot + theme(legend.position = "bottom", legend.direction = "vertical")
-survdiff_bp_m <- survdiff(Surv(time_10, stroke_event) ~ HIGHBP, data = dat_male)
-fit_bp_f <- survfit(Surv(time_10, stroke_event) ~ HIGHBP, data = dat_female)
-p3_f <- ggsurvplot(fit_bp_f, data = dat_female, ylim = c(0.90, 1.00),
+survdiff_bp_m <- survdiff(Surv(time_10, stroke_event) ~ `High_BP`, data = dat_male_lab)
+fit_bp_f <- survfit(Surv(time_10, stroke_event) ~ `High_BP`, data = dat_female_lab)
+p3_f <- ggsurvplot(fit_bp_f, data = dat_female_lab, ylim = c(0.90, 1.00),
            xlab = "", ylab = "")$plot + 
   theme(legend.position = "none", axis.text.x = element_blank(), axis.line.x = element_blank())
-survdiff_bp_f <- survdiff(Surv(time_10, stroke_event) ~ HIGHBP, data = dat_female)
+survdiff_bp_f <- survdiff(Surv(time_10, stroke_event) ~ `High_BP`, data = dat_female_lab)
 
 ## By smoking
-fit_smoke_m <- survfit(surv_object_m ~ CURSMOKE, data = dat_male)
-p4_m <- ggsurvplot(fit_smoke_m, data = dat_male, ylim = c(0.90, 1.00),
+fit_smoke_m <- survfit(surv_object_m ~ `Current_Smoker`, data = dat_male_lab)
+p4_m <- ggsurvplot(fit_smoke_m, data = dat_male_lab, ylim = c(0.90, 1.00),
            xlab = "", ylab = "")$plot + theme(legend.position = "bottom", legend.direction = "vertical")
-survdiff_smoke_m <- survdiff(surv_object_m ~ CURSMOKE, data = dat_male)
-fit_smoke_f <- survfit(surv_object_f ~ CURSMOKE, data = dat_female)
-p4_f <- ggsurvplot(fit_smoke_f, data = dat_female, ylim = c(0.90, 1.00),
+survdiff_smoke_m <- survdiff(surv_object_m ~ `Current_Smoker`, data = dat_male_lab)
+fit_smoke_f <- survfit(surv_object_f ~ `Current_Smoker`, data = dat_female_lab)
+p4_f <- ggsurvplot(fit_smoke_f, data = dat_female_lab, ylim = c(0.90, 1.00),
            xlab = "", ylab = "")$plot + 
   theme(legend.position = "none", axis.text.x  = element_blank(), axis.line.x = element_blank())
-survdiff_smoke_f <- survdiff(surv_object_f ~ CURSMOKE, data = dat_female)
+survdiff_smoke_f <- survdiff(surv_object_f ~ `Current_Smoker`, data = dat_female_lab)
 
 fig1 <- (p2_f | p3_f | p4_f)/(p2_m | p3_m | p4_m) + 
   plot_annotation(title = "Stroke-Free Survival over 10 Years by Risk Factor")
@@ -153,17 +172,62 @@ dat_cc <- dat_10 %>%
 dat_male <- dat_cc %>% filter(SEX == "Male")
 dat_female <- dat_cc %>% filter(SEX == "Female")
 
-summary(cox_male <- coxph(Surv(time_10, stroke_event) ~ AGE + SYSBP + DIABETES + CURSMOKE,
-    data = dat_male))
+dat_lab <- dat_cc %>%
+  filter(PERIOD == 1) %>%
+  mutate(HIGHBP = if_else(SYSBP >= 160, 1, 0)) %>%
+  rename(
+    `Age` = AGE,
+    `Systolic BP` = SYSBP,
+    `Diabetes` = DIABETES,
+    `Prior CHD` = PREVCHD,
+    `On BP Meds` = BPMEDS,
+    `Current Smoker` = CURSMOKE,
+    `Total Cholesterol` = TOTCHOL,
+    `Body Mass Index` = BMI
+  )
+dat_male_lab <- dat_lab %>% filter(SEX == "Male")
+dat_female_lab <- dat_lab %>% filter(SEX == "Female")
+
+summary(cox_male <- coxph(Surv(time_10, stroke_event) ~ Age + `Systolic BP` + Diabetes + `Current Smoker`,
+    data = dat_male_lab))
 ph_male <- cox.zph(cox_male)
 fig2_male <- ggcoxzph(ph_male)
   # Check PH
 
-summary(cox_female <- coxph(Surv(time_10, stroke_event) ~ AGE + SYSBP + DIABETES + CURSMOKE,
-    data = dat_female))
+summary(cox_female <- coxph(Surv(time_10, stroke_event) ~ Age + `Systolic BP` + Diabetes + `Current Smoker`,
+    data = dat_female_lab))
 ph_female <- cox.zph(cox_female)
 fig2_female <- ggcoxzph(ph_female)
   # Check PH
+
+p1_m <- fig2_male[["1"]] + labs(y = "Age") + theme(axis.title.y = element_text(face = "bold"))
+p2_m <- fig2_male[["2"]] + labs(y = "Systolic BP") + theme(axis.title.y = element_text(face = "bold"))
+p3_m <- fig2_male[["3"]] + labs(y = "Diabetes") + theme(axis.title.y = element_text(face = "bold"))
+p4_m <- fig2_male[["4"]] + labs(y = "Current Smoker") + theme(axis.title.y = element_text(face = "bold"))
+
+p1_f <- fig2_female[["1"]] + theme(axis.title.y  = element_blank())
+p2_f <- fig2_female[["2"]] + theme(axis.title.y  = element_blank())
+p3_f <- fig2_female[["3"]] + theme(axis.title.y  = element_blank())
+p4_f <- fig2_female[["4"]] + theme(axis.title.y  = element_blank())
+
+row1 <- plot_grid(p1_m, p1_f, ncol = 2)
+row2 <- plot_grid(p2_m, p2_f, ncol = 2)
+row3 <- plot_grid(p3_m, p3_f, ncol = 2)
+row4 <- plot_grid(p4_m, p4_f, ncol = 2)
+
+main_grid <- plot_grid(row1, row2, row3, row4, ncol = 1,
+                       label_x = 0, hjust = 0)
+header <- plot_grid(
+  ggdraw() + draw_label("Male", fontface = "bold"),
+  ggdraw() + draw_label("Female", fontface = "bold"),
+  ncol = 2
+)
+fig2 <- plot_grid(
+  header,
+  main_grid,
+  ncol = 1,
+  rel_heights = c(0.1, 1)
+)
 ```
 ```{r prob_10yr, echo=FALSE, message=FALSE}
 ages <- c(40, 50, 60)
@@ -201,7 +265,7 @@ base_male <- survfit(cox_male_step, newdata = profiles_male)
 pred_male <- summary(base_male, times = 10)
   # Extract survival at 10 years
 stroke_prob_10_male <- pred_male$surv
-  # 10-year stroke probability = S(10)
+  # 10-year survival probability = S(10)
 
 ## Females
 profiles_female <- expand.grid(
@@ -236,7 +300,7 @@ base_female <- survfit(cox_female_step, newdata = profiles_female)
 pred_female <- summary(base_female, times = 10)
   # Extract survival at 10 years
 stroke_prob_10_female <- pred_female$surv
-  # 10-year stroke probability = S(10)
+  # 10-year survival probability = S(10)
 ```
 ```{r vis_10yr, echo=FALSE, message=FALSE}
 male_tbl <- profiles_male %>%
@@ -281,7 +345,7 @@ combined_table <- bind_rows(female_table_final, male_table_final) %>%
   arrange(SEX, AGE) %>%
   gt(rowname_col = "AGE", groupname_col = "SEX") %>%
   tab_header(
-    title = "10-year Stroke Risk by Sex and Clinical Profile"
+    title = "10-year Stroke-Free Survival by Sex and Clinical Profile"
   ) %>%
   fmt_number(
     columns = where(is.numeric),
@@ -301,6 +365,9 @@ combined_table <- bind_rows(female_table_final, male_table_final) %>%
   ) %>%
   tab_options(
     row_group.as_column = FALSE
+  ) %>% 
+  tab_footnote(
+    footnote = "Table 2: Predicted survival probabilities were generated from sex-specific Cox proportional hazards models using baseline age, systolic BP, diabetes, and smoking status. Five predefined clinical profiles were assessed for three ages. High systolic BP is defined as 160 mmHg." 
   )
 
 male_heat <- profiles_male %>%
@@ -326,7 +393,7 @@ fig3 <- ggplot(heat_all, aes(x = SYSBP, y = AGE, fill = prob)) +
   geom_tile(color = "white") +
   facet_grid(SEX ~ DIABETES, labeller = label_both) +
   scale_fill_gradient(low = "lightblue", high = "darkred",
-                      name = "10-year risk (%)") +
+                      name = "10-year Survival (%)") +
   labs(
     title = "10-year Stroke Risk by Sex",
     x = "Systolic BP",
@@ -384,25 +451,25 @@ Finally, systolic BP and diabetes status were summarized across the three exam p
 
 ## Results
 
-**Table 1** summarizes baseline characteristics for the analytic dataset. Males and females were similar in age and diabetes prevalence, though females had slightly higher systolic BP and total cholesterol. Smoking was substantially more common in males (60.5\% vs. 40.5\%).
+*Table 1* summarizes baseline characteristics for the analytic dataset. Males and females were similar in age and diabetes prevalence, though females had slightly higher systolic BP and total cholesterol. Smoking was substantially more common in males (60.5\% vs. 40.5\%).
 
-Kaplan-Meier curves demonstrated differences in stroke-free survival across several baseline risk factors (**Figure 1**). Diabetes and high systolic BP showed the strongest separation of survival curves, while smoking had minimal impact. Among males, the difference in diabetes was pronounced ($X^2$ = 28.5, p << 0.001), with a more modest effect in females ($X^2$ = 6.9, p = 0.009). High systolic BP ($\geq$ 160 mmHg) showed the largest differences overall, with highly significant log-rank tests for both males ($X^2$ = 68.4, p << 0.001) and females ($X^2$ = 47.7, p << 0.001). In contrast, smoking status was not associated with stroke-free survival in either males or females (p = 0.5; 0.4). 
+Kaplan-Meier curves demonstrated differences in stroke-free survival across several baseline risk factors (*Figure 1*). Diabetes and high systolic BP showed the strongest separation of survival curves, while smoking had minimal impact. Among males, the difference in diabetes was pronounced ($X^2$ = 28.5, p << 0.001), with a more modest effect in females ($X^2$ = 6.9, p = 0.009). High systolic BP ($\geq$ 160 mmHg) showed the largest differences overall, with highly significant log-rank tests for both males ($X^2$ = 68.4, p << 0.001) and females ($X^2$ = 47.7, p << 0.001). In contrast, smoking status was not associated with stroke-free survival in either males or females (p = 0.5; 0.4). 
 
 Separate Cox proportional hazards models were fit for males and females. Age, systolic BP, and diabetes were included *a priori*, and backward selection supported retaining smoking status for males. To aid in comparability across sexes, smoking was also included in the female model. 
 
-For males, age, systolic BP, diabetes, and smoking were all significant predictors of stroke. For every one year increase in age, the hazard of stroke increased by 6.6\% on average (HR = 1.07, 95\% CI: 1.03, 1.11). Each 1 mmHg increase in systolic BP was associated with a 3.4\% increase in hazard (HR = 1.03; 95\% CI: 1.02, 1.05). Diabetes was a strong predictor, with diabetic men experiencing nearly five times the hazard of non-diabetic men (HR = 4.81, 95\% CI: 2.10, 11.01). Smoking was also associated with elevated risk (HR = 1.92, 95\% CI: 1.04, 3.57). The proportional hazards assumption was generally met. Diabetes showed mild deviation (p = 0.048), but the global test was non-significant (p = 0.23), validated by visual inspection (**Figure 2**).
+For males, age, systolic BP, diabetes, and smoking were all significant predictors of stroke. For every one year increase in age, the hazard of stroke increased by 6.6\% on average (HR = 1.07, 95\% CI: 1.03, 1.11). Each 1 mmHg increase in systolic BP was associated with a 3.4\% increase in hazard (HR = 1.03; 95\% CI: 1.02, 1.05). Diabetes was a strong predictor, with diabetic men experiencing nearly five times the hazard of non-diabetic men (HR = 4.81, 95\% CI: 2.10, 11.01). Smoking was also associated with elevated risk (HR = 1.92, 95\% CI: 1.04, 3.57). The proportional hazards assumption was generally met. Diabetes showed mild deviation (p = 0.048), but the global test was non-significant (p = 0.23), validated by visual inspection (*Figure 2*).
 
-For females, age and systolic BP were strong predictors of stroke. Each additional year of age increased the hazard by 7.8\% (HR = 1.08, 95\% CI: 1.04, 1.12), and each 1 mmHg increase in systolic BP increased the hazard by 2.6\% (HR = 1.03, 95\% CI: 1.02, 1.04). Diabetes and smoking were not statistically significant predictors in females (p = 0.25; 0.21). Proportional hazards assumptions were all met with a global p - 0.96 (**Figure 2**).
+For females, age and systolic BP were strong predictors of stroke. Each additional year of age increased the hazard by 7.8\% (HR = 1.08, 95\% CI: 1.04, 1.12), and each 1 mmHg increase in systolic BP increased the hazard by 2.6\% (HR = 1.03, 95\% CI: 1.02, 1.04). Diabetes and smoking were not statistically significant predictors in females (p = 0.25; 0.21). Proportional hazards assumptions were all met with a global p = 0.96 (*Figure 2*).
 
-Predicted 10 year stroke-free survival was estimated for five risk profiles (**Table 2**). Across all profiles, stroke risk increased with age and was consistently higher in males than females (**Figure 3**). High systolic BP produced the largest increase in predicted risk for both sexes. For example, among males aged 60, stroke-free survival declined from 98.9\% for no baseline risk factors to 95.9\% with high BP and 81.6\% with high BP and diabetes combined. Diabetes had a stronger impact in males than females, consistent with the Cox model results. 
+Predicted 10 year stroke-free survival was estimated for five risk profiles (*Table 2*). Across all profiles, stroke risk increased with age and was consistently higher in males than females (*Figure 3*). High systolic BP produced the largest increase in predicted risk for both sexes. For example, among males aged 60, stroke-free survival declined from 98.9\% for no baseline risk factors to 95.9\% with high BP and 81.6\% with high BP and diabetes combined. Diabetes had a stronger impact in males than females, consistent with the Cox model results. 
 
-To assess whether time-varying covariate models might be warrented in future research, systolic BP and diabetes were summarized across the three exam periods (**Figure 4**). Mean systolic BP increased steadily over time for both sexes, rising approximately 7 mmHg from period 1 to 3. Diabetes prevalence also increased from roughly 3\% at period 1 to 8\% at period 3. 
+To assess whether time-varying covariate models might be warranted in future research, systolic BP and diabetes were summarized across the three exam periods (*Figure 4*). Mean systolic BP increased steadily over time for both sexes, rising approximately 7 mmHg from period 1 to 3. Diabetes prevalence also increased from roughly 3\% at period 1 to 8\% at period 3. 
 
 ## Discussion
 
 This paper evaluated baseline predictors of 10 year stroke risk in the Framingham Heart Study and generated clinically interpretable risk estimates for several common risk profiles. Across all analyses, systolic BP emerged as the strongest predictor of stroke, with diabetes contributing additional risk (particularly among males). Predicted 10 year stroke probabilities highlight the impact of elevated BP and the compounded risk when it occurs with diabetes. Risk increased steadily with age and was consistently higher in males, though sex differences were modest overall. 
 
-Although the primary analysis relied on baseline covariates, systolic BP and diabetes both changed meaningfully across exam periods, with rising blood pressure and increasing diabetes prevalence. These shifts suggest that time-varying covariate models may be more accurate in future work. This is amongst other limitations that should be considered. Complete-case analysis may introduce bias related to unmeasured factors. Competing risks such as death were not explicitly modeled, which may overestimate stroke risk. Additionally, the Framingham cohort may limit generalizability to more diverse groups. Dispite these constraints, there is clear evidence of baseline predictors of stroke and clinically relevant 10 year risk estimates. 
+Although the primary analysis relied on baseline covariates, systolic BP and diabetes both changed meaningfully across exam periods, with rising blood pressure and increasing diabetes prevalence. These shifts suggest that time-varying covariate models may be more accurate in future work. This is amongst other limitations that should be considered. Complete-case analysis may introduce bias related to unmeasured factors. Competing risks such as death were not explicitly modeled, which may overestimate stroke risk. Additionally, the Framingham cohort may limit generalizability to more diverse groups. Despite these constraints, there is clear evidence of baseline predictors of stroke and clinically relevant 10 year risk estimates. 
 
 \newpage
 ## Appendix 
@@ -414,23 +481,33 @@ File name: P3/Code/P3_Report.Rmd
 Data Directory: C:/Users/weiblee/OneDrive/Documents/Anschutz/Spring 2026/6624_Advanced/Weible_Advanced/P3/DataRaw
 
 ```{r tab1, echo=FALSE, results='hide'}
-table1(~ AGE + SYSBP + DIABETES + PREVCHD + BPMEDS + CURSMOKE + TOTCHOL + BMI 
-       | SEX, data = dat_cc)
+dat_lab <- dat_cc %>%
+  filter(PERIOD == 1) %>%
+  mutate(HIGHBP = if_else(SYSBP >= 160, 1, 0)) %>%
+  rename(
+    `Age` = AGE,
+    `Systolic BP` = SYSBP,
+    `Diabetes` = DIABETES,
+    `Prior CHD` = PREVCHD,
+    `On BP Meds` = BPMEDS,
+    `Current Smoker` = CURSMOKE,
+    `Total Cholesterol` = TOTCHOL,
+    `Body Mass Index` = BMI
+  )
+table1(~ `Age` + `Systolic BP` + Diabetes + `Prior CHD` + `On BP Meds` +
+         `Current Smoker` + `Total Cholesterol` + `Body Mass Index`
+       | SEX, data = dat_lab, caption = "Table 1: Baseline demographic and clinical characteristics by sex (analytical dataset)")
 ```
 
 ![](Figures/Table1.png)
 
-![](Figures/KM.png)
+![Kaplan-Meier survival curves compare 10 year stroke-fre survival across categories of diabetes, high systolic BP (at least 160 mmHg), and current smoking, stratified by sex. Differences between groups were evaluated using log-rank tests. These plots illustrate unadjusted associations between baseline risk factors and stroke incidence.](Figures/Fig1.png)
 
-```{r fig2, echo=FALSE}
-fig2_male
-fig2_female
-```
-![](Figures/Risk_Profiles.png)
+![Panels display Schoenfeld residuals over time for age, systolic BP, diabetes, and current smoking, stratified by sex. Each plot includes pointwise residuals, a smoothed trend line, and 95% confidence bands. Individual test p-values are reported for each model. Global p-values are 0.2277 for males and 0.9575 for females. These diagnostics support the proportional hazards assumption of the Cox models used to estimate stroke risk.](Figures/Fig2.png)
 
-![](Figures/Heatmap.png)
+![](Figures/Tab2.png)
 
-```{r fig4, echo=FALSE}
-fig4
-```
+![This heatmap visualizes 10 year stroke-free survival probabilites across combinations of systolic BP, diabetes status, age, and sex. Predictions were obtained from sex-specific Cox models. Color gradients represent survival probability, with darker red indicating higher predicted survival.](Figures/Fig3.png)
+
+![Mean systolic BP and diabetes prevalence were summarized across three Framingham exam periods to evaluate changes in risk factors over time. ](Figures/Fig4.png)
 
