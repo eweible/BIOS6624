@@ -1,14 +1,9 @@
-**Project Name**:   
-**PI**:   
-**Analyst**:   
-**CIDA drive Location**:   
-**GitHub Location**:   
+**Project Name**: P4 - Simulation-based investigation of variable selection methods
 
 Details about the folders:
 
 File | Description
 ---|----------------------------------------------------------
-Admin | contains the scope of work and other administrative documents
 Background | contains the background information for the analysis
 Code | contains all R scripts for this project
 DataRaw | contain all raw data provided by investigators
