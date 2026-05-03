@@ -17,7 +17,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 <!-- Title here: -->
-# \textit{Framingham Longitudinal Stroke Risk Profile}
+# \textit{Simulation-Based Investigation of Variable Selection Methods}
 
 <!-- Name here: -->
 Ezra Weible[^1]
@@ -26,23 +26,19 @@ Ezra Weible[^1]
 
 ## Introduction
 
-This project investigates stroke risk in the Framingham Heart Study, a long-term prospective cohort that has followed adults in Framingham, Massachusetts for cardiovascular outcomes since 1948. For this analysis, we use a subset of 4,434 participants with baseline measurements of cardiovascular risk factors and stroke outcomes. Although participants were followed for up to 24 years, this project focuses on the first 10 years of follow-up to ensure that baseline risk factors remain relevant to the outcome window. 
+This project is an investigation of variable selection methods in linear regression using simulations and aims to evaluate how commonly used selection procedures perform when the true underlying model is known. Datasets will be simulated with 20 continuous predictors, five of which will be important and have (true) non-zero effects. Two sample sizes (N = 250 and N = 500) and several predictor correlation structures will be examined to mimic moderate-sized studies with varying levels of multicollinearity. Across these scenarios, we will compare backward selection based on p-values, AIC, BIC, lasso, and elastic net. Each method will be characterized to determine its ability to identify the true predictors, avoid extraneous variables, and produce unbiased and well-calibrated estimates.
 
-The primary goal is to identify which baseline risk factors predict time to first stroke within 10 years, analyzed separately for males and females. A secondary aim is to estimate 10 year stroke probabilities for several clinically relevant risk profiles. Because risk factors were measured at three exam periods, an additional aim is to describe how systolic blood pressure and diabetes status change over time and to discuss how such changes might influence analyses that rely only on baseline values.
+## Preliminary Analysis Plan
 
-## Preliminary Analysis
+All analyses will be conducted in R v4.5.2 (2025-10-31 ucrt). Data will be generated using gendata from the hdrm package. Each simulated dataset will include 20 predictors (X1–X20), with X1–X5 assigned non-zero coefficients ranging from 1/6 to 5/6 in increments of 1/6. The remaining predictors will have true coefficients of zero. Errors will follow a standard normal distribution. Two sample sizes (250 and 500) will be evaluated. Predictor correlation will be varied using an exchangeable structure with $\rho$ = 0 (independent), 0.35 (moderate), and 0.7 (high). Before running the full simulation, a large dataset will be generated to confirm that the simulated data match the intended design, particularly the correlation structure.
 
-All analyses will be conducted in R v4.5.2 (2025-10-31 ucrt). Participants with evidence of stroke at baseline will be excluded. Follow-up time will be defined using TIMESTRK and restricted to 10 years. Individuals who experience a non-stroke event before 10 years will be censored at the time of event. Events occurring after 10 years will be censored at 10 years. A new event indicator will be created to capture first stroke within the 10 year window.
+For each simulated dataset, five variable selection strategies will be applied: 1. Backward selection using p-values, 2. AIC-based selection, 3. BIC-based selection, 4. Lasso, 5. Elastic net. The following specifications will be used: 1. The full model will be fit using ordinary least squares, and variables will be removed using the step function with a chi-square cutoff corresponding to $\alpha$ = 0.05., 2. Stepwise selection will be performed using AIC as the criterion., 3. Stepwise selection will be repeated using BIC., 4. Models will be fit using glmnet with standardized predictors and $\alpha$ = 1. Two tuning parameters will be evaluated: lambda.min and lambda.1se from 10-fold cross-validation., 5. Using glmnet with $\alpha$ = 0.5, the same two $\lambda$ choices will be examined. For lasso and elastic net, the set of predictors with non-zero coefficients at the chosen $\lambda$ will be extracted. Because glmnet does not provide standard errors, the final selected model will be refit using lm to obtain coefficient estimates, confidence intervals, and p-values. Predictors not selected into the model will be treated as non-significant by default.
 
-Baseline covariates include age, systolic blood pressure, diabetes, smoking status, BMI, cholesterol, coronary heart disease, and blood pressure medication use. Variables will be checked for implausible values and recoded when necessary. Missingness will be summarized descriptively. Complete case analysis will be used for the final Cox models. Analyses will be stratified by sex. Age, systolic blood pressure, and diabetes will be included *a priori*, additional baseline covariates will be evaluated using backwards selection based on AIC. Differences in final models by sex will be noted and interpreted as needed. 
-
-Kaplan–Meier curves and log-rank tests will be used to compare stroke-free survival across baseline risk factors. The primary analysis will use Cox proportional hazards models. Proportional hazards assumptions will be assessed using Schoenfeld residuals and log-minus-log survival plots. For each sex, 10 year predicted stroke probabilities will be estimated from the final Cox model for five risk profiles at ages 40, 50, and 60. The risk profiles are: 1. No baseline risk factors, 2. High systolic blood pressure ($\geq$ 160), 3. Diabetes, 4. Both high systolic blood pressure and diabetes, 5. One additional profile chosen based on model results. Although the primary analysis will only use baseline covariates, systolic blood pressure and diabetes will be summarized across the three exam periods to assess how much they change over time and if time-varying covariate models may be more appropriate.
+Each scenario (sample size by correlation level) will be replicated 10,000 times to ensure stable Monte Carlo estimates. Across replications, the following will be summarized: True positive rates (proportion of simulations in which each of the five true predictors is selected), False positive rates (proportion of simulations in which any of the 15 noise predictors is selected), Bias (average difference between estimated and true coefficients for selected variables), Coverage (proportion of 95\% confidence intervals that contain the true coefficient), Type I error (for noise predictors based on significance testing in the refitted models), and Type II error (for true predictors based on significance testing in the refitted models). Because inference after model selection is known to be biased, these summaries will be interpreted descriptively rather than as formal inferential guarantees. 
 
 \newpage
 ## Appendix 
 
 Code Directory: https://github.com/eweible/BIOS6624.git
 
-File name: P3/Code/P3_Data_Analysis_Plan.Rmd
-
-Data Directory: C:/Users/weiblee/OneDrive/Documents/Anschutz/Spring 2026/6624_Advanced/Weible_Advanced/P3/DataRaw
+File name: P4/Code/P4_Data_Analysis_Plan.Rmd
