@@ -1,0 +1,33 @@
+---
+title: "P4_Data_Exploration"
+output: html_document
+date: "2026-05-04"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(hdrm)
+```
+
+```{r}
+generate_data <- function(n, rho) {
+  hdrm::gen_data(
+    n = n,
+    p = 20,
+    p1 = 5,
+    beta = c(seq(1/6, 5/6, by = 1/6), rep(0, 15)),
+    family = "gaussian",
+    signam = "heterogeneous",
+    corr = "exchangeable",
+    rho = rho
+  )
+}
+# Usage: 
+# set.seed(2025)
+# for (i in 1:10000) {
+#   dat <- generate_data(n = 250, rho = 0.35)
+#   # run selection methods...
+# }
+
+```
+
