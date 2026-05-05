@@ -1,0 +1,44 @@
+---
+output:
+  bookdown::pdf_document2:
+    toc: false
+    number_sections: false
+documentclass: article
+geometry: margin=1in
+fontsize: 12pt
+linestretch: 2
+fig.cap: true
+header-includes:
+  - \usepackage{float}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- Title here: -->
+# \textit{Simulation-Based Investigation of Variable Selection Methods}
+
+<!-- Name here: -->
+Ezra Weible[^1]
+
+[^1]: Biostatistics Masters Student, Colorado School of Public Health, CU Anschutz Medical Campus
+
+## Introduction
+
+This project investigates variable selection methods in linear regression using simulations and aims to evaluate how variable selection procedures perform when the true underlying model is known. Datasets will include 20 continuous predictors, 5 with (true) non-zero effects. Two sample sizes (N = 250 and N = 500) and several predictor correlation structures will be examined to represent moderate sample size studies with varying multicollinearity. Each method (backward selection based on p-values, AIC, BIC, LASSO, and elastic net) will be assessed on its ability to identify true predictors, avoid extraneous variables, and produce unbiased and well-calibrated estimates.
+
+## Preliminary Analysis Plan
+
+All analyses will be conducted in R v4.5.2 (2025-10-31 ucrt). Data will be generated using gendata from the hdrm package. Each dataset will include 20 predictors (X1–X20), with X1–X5 assigned coefficients ranging from 1/6 to 5/6 in increments of 1/6. The remaining predictors will be assigned zero. Errors will follow a standard normal distribution. Predictor correlation will be varied using an exchangeable structure with $\rho$ = 0, 0.35, and 0.7. Before running the full simulation, a large dataset will be generated to confirm that the simulated data match the intended design.
+
+Five variable selection strategies will be applied: 1. Backward selection using p-values, 2. AIC-based selection, 3. BIC-based selection, 4. LASSO, and 5. Elastic net. Backward selection will use the step function with a chi-square cutoff corresponding to $\alpha$ = 0.05. AIC and BIC models will use stepwise selection. LASSO and elastic net will be fit using glmnet with standardized predictors and $\alpha$ = 1 for LASSO, $\alpha = 0.5$ for elastic net. Two tuning parameters will be evaluated for each: lambda.min and lambda.1se from 10-fold cross-validation. The set of predictors with non-zero coefficients at the chosen $\lambda$ will be extracted. Because glmnet does not provide standard errors, the final selected model will be refit using lm to obtain coefficient estimates, confidence intervals, and p-values. Predictors not selected into the model will be treated as non-significant by default.
+
+Each scenario (sample size by correlation level) will be replicated 10,000 times. Across replications, the following will be summarized: True positive rates (proportion of simulations in which each of the five true predictors is selected), False positive rates (proportion of simulations in which any of the 15 noise predictors is selected), Bias (average difference between estimated and true coefficients for selected variables), Coverage (proportion of 95\% confidence intervals that contain the true coefficient), Type I error (for noise predictors based on significance testing in the refitted models), and Type II error (for true predictors based on significance testing in the refitted models). Because inference after model selection is known to be biased, these summaries will be interpreted descriptively. 
+
+\newpage
+## Appendix 
+
+Code Directory: https://github.com/eweible/BIOS6624.git
+
+File name: P4/Code/P4_Data_Analysis_Plan.Rmd
