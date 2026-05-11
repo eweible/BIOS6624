@@ -338,3 +338,264 @@ digits = 1)
 1. Morris TP, White IR, Crowther MJ. Using simulation studies to evaluate statistical methods. Stat Med. 2019;38(11):2074-2102. doi:10.1002/sim.8086
 
 
+# Updates to simulation
+
+```{r}
+library(dplyr)
+harvest <- function(mod_obj, param, alpha = 0.05) {
+  
+  # coefficient table
+  est <- as.data.frame(summary(mod_obj)$coefficients)
+  est$param <- row.names(est)
+  
+  # confidence intervals
+  CIs <- as.data.frame(confint.default(mod_obj, level = 1 - alpha))
+  names(CIs) <- c("LCL", "UCL")
+  CIs$param <- row.names(CIs)
+  
+  # variable names V01–V20
+  var_names <- sprintf("V%02d", seq_along(param))
+  
+  # base result frame
+  res <- tibble::tibble(
+    variables = var_names,
+    true_values = param,
+    true_non_zero = as.integer(seq_along(param) <= 5)
+  )
+  
+  # selected + significant
+  res <- res %>%
+    dplyr::mutate(
+      selected = as.integer(variables %in% est$param),
+      signif   = as.integer(variables %in% est$param[est[,4] < alpha])
+    ) %>%
+    dplyr::left_join(CIs, by = c("variables" = "param")) %>%
+    dplyr::mutate(
+      covered = dplyr::case_when(
+        !is.na(LCL) & !is.na(UCL) ~ as.integer(LCL <= true_values & true_values <= UCL),
+        selected == 0 & true_non_zero == 1 ~ 0L,
+        selected == 0 & true_non_zero == 0 ~ 1L,
+        TRUE ~ NA_integer_
+      )
+    )
+  
+  res
+}
+
+```
+
+```{r}
+library(hdrm)
+library(glmnet)
+
+simfunc <- function(n, rho, alpha_en = 0.5, alpha_cov = 0.05) {
+  
+  # true betas
+  param <- c(1/6, 1/3, 1/2, 2/3, 5/6, rep(0, 15))
+  
+  # simulate data
+  dat_obj <- gen_data(
+    n      = n,
+    p      = 20,
+    p1     = 5,
+    beta   = param,
+    family = "gaussian",
+    corr   = "exchangeable",
+    rho    = rho
+  )
+  dat <- data.frame(y = dat_obj$y, dat_obj$X)
+  x   <- as.matrix(dat_obj$X)
+  y   <- dat_obj$y
+  
+  # saturated model
+  sat_model <- lm(y ~ ., data = dat)
+  
+  out_list <- list()
+  
+  ## 1. p‑value backward (alpha = 0.05)
+  pval_redux <- step(
+    sat_model,
+    direction = "backward",
+    trace = 0,
+    k = qchisq(1 - 0.05, df = 1)
+  )
+  tmp <- harvest(pval_redux, param = param, alpha = alpha_cov)
+  tmp$method <- "PVAL"
+  tmp$n      <- n
+  tmp$rho    <- rho
+  out_list[["PVAL"]] <- tmp
+  
+  ## 2. AIC
+  AIC_redux <- step(
+    sat_model,
+    direction = "backward",
+    trace = 0,
+    k = 2
+  )
+  tmp <- harvest(AIC_redux, param = param, alpha = alpha_cov)
+  tmp$method <- "AIC"
+  tmp$n      <- n
+  tmp$rho    <- rho
+  out_list[["AIC"]] <- tmp
+  
+  ## 3. BIC
+  BIC_redux <- step(
+    sat_model,
+    direction = "backward",
+    trace = 0,
+    k = log(n)
+  )
+  tmp <- harvest(BIC_redux, param = param, alpha = alpha_cov)
+  tmp$method <- "BIC"
+  tmp$n      <- n
+  tmp$rho    <- rho
+  out_list[["BIC"]] <- tmp
+  
+  ## 4. LASSO (alpha = 1)
+  cv_lasso <- cv.glmnet(x, y, alpha = 1, standardize = TRUE)
+  
+  # lambda.min
+  coef_min <- coef(cv_lasso, s = "lambda.min")
+  sel_min  <- rownames(coef_min)[as.numeric(coef_min) != 0]
+  sel_min  <- setdiff(sel_min, "(Intercept)")
+  if (length(sel_min) > 0) {
+    lasso_min_mod <- lm(
+      as.formula(paste("y ~", paste(sel_min, collapse = " + "))),
+      data = dat
+    )
+  } else {
+    lasso_min_mod <- lm(y ~ 1, data = dat)
+  }
+  tmp <- harvest(lasso_min_mod, param = param, alpha = alpha_cov)
+  tmp$method <- "LASSO_min"
+  tmp$n      <- n
+  tmp$rho    <- rho
+  out_list[["LASSO_min"]] <- tmp
+  
+  # lambda.1se
+  coef_1se <- coef(cv_lasso, s = "lambda.1se")
+  sel_1se  <- rownames(coef_1se)[as.numeric(coef_1se) != 0]
+  sel_1se  <- setdiff(sel_1se, "(Intercept)")
+  if (length(sel_1se) > 0) {
+    lasso_1se_mod <- lm(
+      as.formula(paste("y ~", paste(sel_1se, collapse = " + "))),
+      data = dat
+    )
+  } else {
+    lasso_1se_mod <- lm(y ~ 1, data = dat)
+  }
+  tmp <- harvest(lasso_1se_mod, param = param, alpha = alpha_cov)
+  tmp$method <- "LASSO_1se"
+  tmp$n      <- n
+  tmp$rho    <- rho
+  out_list[["LASSO_1se"]] <- tmp
+  
+  ## 5. Elastic net (alpha = 0.5)
+  cv_en <- cv.glmnet(x, y, alpha = alpha_en, standardize = TRUE)
+  
+  # lambda.min
+  coef_en_min <- coef(cv_en, s = "lambda.min")
+  sel_en_min  <- rownames(coef_en_min)[as.numeric(coef_en_min) != 0]
+  sel_en_min  <- setdiff(sel_en_min, "(Intercept)")
+  if (length(sel_en_min) > 0) {
+    en_min_mod <- lm(
+      as.formula(paste("y ~", paste(sel_en_min, collapse = " + "))),
+      data = dat
+    )
+  } else {
+    en_min_mod <- lm(y ~ 1, data = dat)
+  }
+  tmp <- harvest(en_min_mod, param = param, alpha = alpha_cov)
+  tmp$method <- "EN_min"
+  tmp$n      <- n
+  tmp$rho    <- rho
+  out_list[["EN_min"]] <- tmp
+  
+  # lambda.1se
+  coef_en_1se <- coef(cv_en, s = "lambda.1se")
+  sel_en_1se  <- rownames(coef_en_1se)[as.numeric(coef_en_1se) != 0]
+  sel_en_1se  <- setdiff(sel_en_1se, "(Intercept)")
+  if (length(sel_en_1se) > 0) {
+    en_1se_mod <- lm(
+      as.formula(paste("y ~", paste(sel_en_1se, collapse = " + "))),
+      data = dat
+    )
+  } else {
+    en_1se_mod <- lm(y ~ 1, data = dat)
+  }
+  tmp <- harvest(en_1se_mod, param = param, alpha = alpha_cov)
+  tmp$method <- "EN_1se"
+  tmp$n      <- n
+  tmp$rho    <- rho
+  out_list[["EN_1se"]] <- tmp
+  
+  do.call(rbind, out_list)
+}
+
+```
+
+```{r}
+spin <- function(nsim = 500, profile) {
+  stopifnot(nrow(profile) == 1)
+  
+  res <- vector("list", nsim)
+  for (iter in seq_len(nsim)) {
+    tmp <- simfunc(n = profile[,"N"], rho = profile[,"rho"])
+    tmp$iter <- iter
+    res[[iter]] <- tmp
+  }
+  do.call(rbind, res)
+}
+
+```
+
+```{r}
+profiles <- expand.grid(
+  rho = c(0, 0.35, 0.7),
+  N   = c(250, 500)
+)
+
+library(future)
+library(future.apply)
+
+n_profiles <- nrow(profiles)
+plan(multisession, workers = n_profiles)
+set.seed(12345)
+
+# choose nsim based on your SE target
+Ep  <- 0.5
+SEr <- 0.01
+nsim <- ceiling(Ep * (1 - Ep) / SEr^2)
+
+system.time({
+  simres_list <- future_lapply(
+    1:n_profiles,
+    function(i) spin(nsim = nsim, profile = profiles[i,]),
+    future.seed = TRUE
+  )
+})
+
+simres <- do.call(rbind, simres_list)
+plan(sequential)
+
+```
+
+```{r}
+library(dplyr)
+
+summary_metrics <- simres %>%
+  group_by(n, rho, method, iter) %>%
+  summarise(
+    # per‑run summaries
+    tpr = mean(selected[true_non_zero == 1]),
+    fpr = mean(selected[true_non_zero == 0]),
+    bias = mean((true_values - true_values) * 0), # placeholder if you add est
+    coverage = mean(covered[true_non_zero == 1]),
+    type1 = mean(signif[true_non_zero == 0]),
+    type2 = mean(1 - signif[true_non_zero == 1]),
+    .groups = "drop"
+  ) %>%
+  group_by(n, rho, method) %>%
+  summarise(across(c(tpr, fpr, bias, coverage, type1, type2), mean), .groups = "drop")
+```
+
