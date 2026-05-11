@@ -342,46 +342,56 @@ digits = 1)
 
 ```{r}
 library(dplyr)
+
 harvest <- function(mod_obj, param, alpha = 0.05) {
   
+  # param should be a named vector: names = predictor names (e.g. "X1", ..., "X20")
+  stopifnot(!is.null(names(param)))
+  
   # coefficient table
-  est <- as.data.frame(summary(mod_obj)$coefficients)
-  est$param <- row.names(est)
+  est_raw <- as.data.frame(summary(mod_obj)$coefficients)
+  est_raw$param <- row.names(est_raw)
+  
+  # drop intercept
+  est <- est_raw %>%
+    filter(param != "(Intercept)") %>%
+    transmute(
+      variables = param,
+      estimate  = `Estimate`,
+      pval      = `Pr(>|t|)`
+    )
   
   # confidence intervals
-  CIs <- as.data.frame(confint.default(mod_obj, level = 1 - alpha))
-  names(CIs) <- c("LCL", "UCL")
-  CIs$param <- row.names(CIs)
+  CIs_raw <- as.data.frame(confint.default(mod_obj, level = 1 - alpha))
+  CIs_raw$param <- row.names(CIs_raw)
+  names(CIs_raw)[1:2] <- c("LCL", "UCL")
   
-  # variable names V01–V20
-  var_names <- sprintf("V%02d", seq_along(param))
+  CIs <- CIs_raw %>%
+    filter(param != "(Intercept)") %>%
+    transmute(
+      variables = param,
+      LCL, UCL
+    )
   
   # base result frame
   res <- tibble::tibble(
-    variables = var_names,
-    true_values = param,
-    true_non_zero = as.integer(seq_along(param) <= 5)
-  )
-  
-  # selected + significant
-  res <- res %>%
-    dplyr::mutate(
-      selected = as.integer(variables %in% est$param),
-      signif   = as.integer(variables %in% est$param[est[,4] < alpha])
-    ) %>%
-    dplyr::left_join(CIs, by = c("variables" = "param")) %>%
-    dplyr::mutate(
-      covered = dplyr::case_when(
+    variables     = names(param),
+    true_values   = as.numeric(param),
+    true_non_zero = as.integer(true_values != 0)
+  ) %>%
+    left_join(est, by = "variables") %>%
+    left_join(CIs, by = "variables") %>%
+    mutate(
+      selected = as.integer(!is.na(estimate)),
+      signif   = as.integer(selected == 1 & pval < alpha),
+      covered  = dplyr::case_when(
         !is.na(LCL) & !is.na(UCL) ~ as.integer(LCL <= true_values & true_values <= UCL),
-        selected == 0 & true_non_zero == 1 ~ 0L,
-        selected == 0 & true_non_zero == 0 ~ 1L,
-        TRUE ~ NA_integer_
+        TRUE ~ NA_integer_  # no CI if not selected
       )
     )
   
   res
 }
-
 ```
 
 ```{r}
@@ -403,9 +413,13 @@ simfunc <- function(n, rho, alpha_en = 0.5, alpha_cov = 0.05) {
     corr   = "exchangeable",
     rho    = rho
   )
+  
   dat <- data.frame(y = dat_obj$y, dat_obj$X)
   x   <- as.matrix(dat_obj$X)
   y   <- dat_obj$y
+  
+  # name param to match columns of X (e.g. "X1", ..., "X20")
+  names(param) <- colnames(dat_obj$X)
   
   # saturated model
   sat_model <- lm(y ~ ., data = dat)
@@ -531,7 +545,6 @@ simfunc <- function(n, rho, alpha_en = 0.5, alpha_cov = 0.05) {
   
   do.call(rbind, out_list)
 }
-
 ```
 
 ```{r}
@@ -581,21 +594,115 @@ plan(sequential)
 ```
 
 ```{r}
-library(dplyr)
-
 summary_metrics <- simres %>%
   group_by(n, rho, method, iter) %>%
   summarise(
-    # per‑run summaries
-    tpr = mean(selected[true_non_zero == 1]),
-    fpr = mean(selected[true_non_zero == 0]),
-    bias = mean((true_values - true_values) * 0), # placeholder if you add est
-    coverage = mean(covered[true_non_zero == 1]),
-    type1 = mean(signif[true_non_zero == 0]),
-    type2 = mean(1 - signif[true_non_zero == 1]),
+    tpr = mean(selected[true_non_zero == 1], na.rm = TRUE),
+    fpr = mean(selected[true_non_zero == 0], na.rm = TRUE),
+    bias = mean(
+      estimate[true_non_zero == 1 & selected == 1] -
+        true_values[true_non_zero == 1 & selected == 1],
+      na.rm = TRUE
+    ),
+    coverage = mean(covered[true_non_zero == 1], na.rm = TRUE),
+    type1 = mean(signif[true_non_zero == 0], na.rm = TRUE),
+    type2 = mean(1 - signif[true_non_zero == 1], na.rm = TRUE),
     .groups = "drop"
   ) %>%
   group_by(n, rho, method) %>%
-  summarise(across(c(tpr, fpr, bias, coverage, type1, type2), mean), .groups = "drop")
+  summarise(
+    across(
+      c(tpr, fpr, bias, coverage, type1, type2),
+      \(x) mean(x, na.rm = TRUE)
+    ),
+    .groups = "drop"
+  )
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(summary_metrics, aes(x = rho, y = tpr, color = method)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  facet_wrap(~ n) +
+  labs(
+    title = "True Positive Rate by Method",
+    x = "Correlation (rho)",
+    y = "TPR"
+  ) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+ggplot(summary_metrics, aes(x = rho, y = fpr, color = method)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  facet_wrap(~ n) +
+  labs(
+    title = "False Positive Rate by Method",
+    x = "Correlation (rho)",
+    y = "FPR"
+  ) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+ggplot(summary_metrics, aes(x = rho, y = coverage, color = method)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  facet_wrap(~ n) +
+  labs(
+    title = "95% Confidence Interval Coverage (True Predictors)",
+    x = "Correlation (rho)",
+    y = "Coverage"
+  ) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+```{r}
+ggplot(summary_metrics, aes(x = rho, y = type1, color = method)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  facet_wrap(~ n) +
+  labs(
+    title = "Type I Error Rate (Noise Predictors)",
+    x = "Correlation (rho)",
+    y = "Type I Error"
+  ) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+```{r}
+ggplot(summary_metrics, aes(x = rho, y = type2, color = method)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  facet_wrap(~ n) +
+  labs(
+    title = "Type II Error Rate (True Predictors)",
+    x = "Correlation (rho)",
+    y = "Type II Error"
+  ) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+```{r}
+vars_selected <- simres %>%
+  group_by(n, rho, method, iter) %>%
+  summarise(num_selected = sum(selected), .groups = "drop")
+
+ggplot(vars_selected, aes(x = rho, y = num_selected, color = method)) +
+  stat_summary(fun = mean, geom = "line", linewidth = 1) +
+  stat_summary(fun = mean, geom = "point", size = 2) +
+  facet_wrap(~ n) +
+  labs(
+    title = "Average Number of Variables Selected",
+    x = "Correlation (rho)",
+    y = "Mean # Selected"
+  ) +
+  theme_bw() +
+  theme(legend.position = "bottom")
 ```
 
