@@ -3,6 +3,7 @@ output:
   bookdown::pdf_document2:
     toc: false
     number_sections: false
+    latex_engine: xelatex
 documentclass: article
 geometry: margin=1in
 fontsize: 12pt
@@ -16,6 +17,8 @@ csl: alex_vancouver.csl
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(gt)
 ```
 
 <!-- Title here: -->
@@ -36,7 +39,7 @@ This project investigates several common variable selection methods in linear re
 
 Data were generated from the linear model $Y = \beta_0 + \Sigma_{j=1}^{20} \beta_j X_j + \epsilon$, with $\epsilon \sim N(0,1)$. Predictors $X_1$ to $X_5$ had true coefficients ranging from $1/6$ to $5/6$ in increments of $1/6$, and the remaining 15 predictors had coefficients of zero. Predictor correlation followed an exchangeable structure with $\rho = 0, 0.35\text{, and } 0.7$. The case $\rho = 0$ corresponds to independent predictors. 
 
-# Methods 
+## Methods 
 
 All analyses were be conducted in R v4.5.2 (2025-10-31 ucrt) [@R]. Data was be generated using gen_data from the hdrm package. Five variable selection strategies will be applied to each simulation dataset: 
 
@@ -48,9 +51,9 @@ All analyses were be conducted in R v4.5.2 (2025-10-31 ucrt) [@R]. Data was be g
 
 Backward selection using p-values removed variables sequentially using p < 0.05, equivalent to using step() with k = qchisq(0.95, 1). AIC and BIC based backward selection used penalties of $k = 2$ and $k = log(n)$, respectively. LASSO and elastic net models were fit using glmnet with standardized predictors with $\alpha$ = 1 for LASSO, $\alpha = 0.5$ for elastic net. For each penalized method, two tuning parameters will be evaluated: lambda.min (minimum cross-validated error) and lambda.1se (largest $\lambda$ within one SE of the minimum) from 10-fold cross-validation. Predictors with non-zero coefficients at the chosen $\lambda$ were considered selected. Because glmnet does not provide standard errors, each model was refit using lm to obtain coefficient estimates, confidence intervals, and p-values. Predictors not selected were treated as non-significant. This reflects how investigators typically interpret selected models and aligns with the project's focus on post-selection inference.
 
-# Simultaion
+## Simultaion
 
-Each scenario (combination of sample size and correlation level) was replicated 2,500 times, chosen to achieve a Monte Carlo standard error of approximately 0.01 for proportions near 0.5 [@Morris2019]. For each replication, a dataset was generated, all selection methods were applied, and the selection model was refit. Across replications, performance was summarized using: 
+Each scenario, defined by a combination of sample size and predictor correlation, was replicated 2,500 times, chosen to achieve a Monte Carlo standard error of approximately 0.01 for proportions near 0.5 [@Morris2019]. For each replication, a dataset was generated, all variable selection methods were applied, and the selection model was refit. Across replications, performance was summarized using the following metrics: 
 
 * True Positive Rates (TPR): proportion of simulations selecting each true predictor 
 * False Positive Rates (FPR): proportion of simulations selecting any noise predictor
@@ -61,28 +64,31 @@ Each scenario (combination of sample size and correlation level) was replicated 
 
 **Table 1** summarizes the simulation design.
 
-# Results
+## Results
 
-Across all scenarios, the methods showed clear and consistent differences in selection behavior (Tables 2-4). LASSO_min and EN_min achieved the highest true positive rates (roughly 0.99-1.00), identifying nearly all true predictors regardless of sample size or correlation. However, these methods also selected the largest number of noise variables, with false positive rates (FPR) ranging from 0.35 to 0.49 and an average of 10-13 predictors retained per model.
+Across all scenarios, the methods showed clear and consistent differences in selection behavior. **Figure 1** shows the average number of variables selected by each method. LASSO_min and EN_min consistently produced the largest models, often retaining 10-13 predictors, whereas BIC selected the sparsest models, averaging around five predictors regardless of sample size. AIC and backwards p-value selection fell between these.
 
-BIC produced the sparsest models, selecting approximately five predictors on average and yielding the lowest FPRs (0.01-0.03). This conservatism came at the cost of lower TPRs, particularly under higher correlation (TPR decreasing from about 0.92 at $\rho = 0$ to about 0.81 at $\rho = 0.7$). AIC and backward p‑value selection fell between these extremes, with TPRs around 0.90-0.96 and FPRs around 0.05-0.18.
+Sensitivity to true predictors is shown in **Figure 2**, which displays TPRs. LASSO_min and EN_min achieved the highest TPRs (roughly 0.99-1.00), identifying nearly all true predictors regardless of sample size or correlation. BIC showed reduced sensitivity under higher correlation, with TPR decreasing from roughly 0.92 at $\rho = 0$ to 0.81 at $\rho = 0.7$. AIC and backward p-value selection maintained intermediate TPRs. 
 
-Penalized methods using the lambda.1se rule provided a more conservative alternative to lambda.min. LASSO.1se and EN.1se achieved TPRs of 0.94-0.98 with substantially lower FPRs than their lambda_min counterparts. EN.1se was more sensitive to correlation, with the number of selected variables increasing from about 6 at $\rho = 0$ to about 11 at $\rho = 0.7$.
+FPRs, shown in **Figure 3**, reveal the tradeoff between sensitivity and specificity. LASSO_min and EN_min had the highest FPRs (0.35-0.49), whereas BIC was the lowest (0.01-0.03). 
 
-Bias was small for all methods, though penalized approaches exhibited the expected negative shrinkage bias. Coverage of 95\% confidence intervals was similar across methods (roughly 0.93-0.95), reflecting the fact that inference was computed after refitting with OLS. Type I error closely mirrored FPR patterns, while Type II error was highest for BIC and lowest for the lambda.min penalized methods.
+Coverage of 95\% confidence intervals for true predictors is shown in **Figure 4**. Coverage was near 0.95 for all methods, reflecting the refitting for post-selection inference. Penalized methods showed slightly lower coverage due to shrinkage bias. 
 
-# Discussion 
+Type I error closely mirrored FPR patterns, while Type II error increased with correlation for all methods, particularly for the more conservative BIC and the lambda.1se penalized methods (**Figure 5**). Bias was small for all methods, though penalized approaches exhibited the expected negative shrinkage bias (**Supplemental Table**).
+
+## Discussion 
 
 This simulation study highlights the tradeoffs inherent in variable selection for linear regression. LASSO.min and EN.min were the most sensitive methods, consistently identifying nearly all true predictors, but at the cost of selecting many noise variables and inflating Type I error. These methods may be appropriate when the goal is to avoid missing true signals, but they produce models that are larger and less interpretable. In practical terms, this means that methods like LASSO.min find almost all real predictors but also include many false ones, while BIC is very cautious and rarely includes noise but sometimes misses real effects.
 
 BIC was the most conservative method, selecting approximately the true model size and maintaining very low false positive rates. However, this came with reduced sensitivity, particularly under moderate correlation, where BIC frequently omitted true predictors. AIC and backward p‑value selection offered intermediate performance, balancing TPR and FPR but remaining sensitive to correlation.
+
 The lamdba.1se versions of the lasso and elastic net provided a useful compromise, achieving high TPR with substantially lower FPR than lamdba.min. These methods may be preferable in settings with correlated predictors, though EN.1se showed increasing instability as correlation increased.
 
 Across all methods, post selection inference remained imperfect. Although coverage was close to nominal due to refitting with OLS, Type I error was inflated for methods that frequently selected noise variables, and shrinkage bias persisted for penalized approaches.
 
-Overall, the choice of method should depend on the scientific goal. When avoiding false positives is critical, BIC is the safest option. When identifying all potential predictors is more important, penalized methods with lambda.min perform best. For balanced performance, AIC, p value backward selection, or penalized methods with lambda.1se offer reasonable compromises.
+Overall, the choice of method should depend on the scientific goal. When avoiding false positives is critical, BIC is the safest option. When identifying all potential predictors is more important, penalized methods with lambda.min perform best. For balanced performance, AIC, p-value backward selection, or penalized methods with lambda.1se offer reasonable compromises.
 
-# Future Work
+## Future Work
 
 Several extensions could strengthen and broaden the findings from this simulation study. First, although this project focused on an exchangeable correlation structure, alternative patterns such as autoregressive (AR(1)) or block‑structured correlation could be examined to assess whether the relative performance of selection methods depends on the form of multicollinearity rather than its magnitude alone [@Chong2005]. Second, the true effect sizes were fixed and moderately large; exploring smaller or heterogeneous effect sizes would provide insight into how these methods behave when signals are weak or sparse. Third, this study evaluated post‑selection inference using ordinary least squares refitting, but emerging approaches such as selective inference, debiased lasso, or bootstrap‑based stability selection may offer more reliable uncertainty quantification and could be incorporated in future work.
 
@@ -102,25 +108,42 @@ Code Directory: https://github.com/eweible/BIOS6624.git
 
 File name: P4/Code/P4_Data_Analysis.Rmd
 
-## Tables and Figures
+Data Directory: C:/Users/weiblee/OneDrive/Documents/Anschutz/Spring 2026/6624_Advanced/Weible_Advanced/P4/DataProcessed
 
-![](Figures/Summary_Table.png)
-```{r echo = FALSE}
+```{r tab1, echo = FALSE, out.width="\\linewidth"}
+knitr::include_graphics("Figures/Summary_Table.png")
+```
+
+```{r fig1, echo = FALSE, out.width="\\linewidth", fig.cap = "Mean number of predictors retained by each selection method across correlation levels and sample sizes (N = 250, 500). Lines represent the average count of selected variables per simulation. Penalized methods (LASSO min, EN min) tend to select larger models, while BIC yields the sparsest selections. Increasing correlation generally inflates model size for all methods."}
+knitr::include_graphics("Figures/AvgVars_Plot.png")
+```
+
+```{r fig2, echo = FALSE, out.width="\\linewidth", fig.cap = "True positive rates (TPR) for correctly identifying predictors with non‑zero effects. Lines depict the proportion of true predictors selected across correlation levels and sample sizes. Penalized methods using lambda min achieve near‑perfect detection (TPR near 1.00), whereas BIC shows reduced sensitivity under higher correlation. Larger sample sizes improve detection for all methods."}
+knitr::include_graphics("Figures/TPR_Plot.png")
+```
+
+```{r fig3, echo = FALSE, out.width="\\linewidth", fig.cap = "False positive rates (FPR) for noise predictors under varying correlation and sample size conditions. Higher FPR indicates greater inclusion of irrelevant variables. LASSO min and EN min exhibit elevated FPRs, while BIC maintains the lowest rates. AIC and backward p‑value selection show intermediate behavior, balancing sensitivity and specificity."}
+knitr::include_graphics("Figures/FPR_Plot.png")
+```
+
+```{r fig4, echo = FALSE, out.width="\\linewidth", fig.cap = "Coverage of 95% confidence intervals for true predictors across correlation levels and sample sizes. Each line shows the proportion of intervals containing the true coefficient after refitting with OLS. Coverage remains near 0.95 for all methods, indicating that post‑selection inference using refitted models provides reasonable uncertainty estimates despite selection bias."}
+knitr::include_graphics("Figures/Coverage_Plot.png")
+```
+
+```{r fig5, echo = FALSE, fig.show='hold', out.width="80%", fig.align = "center", fig.cap="Panel (a) displays Type I error rates for noise predictors; panel (b) shows Type II error rates for true predictors. Each line represents the average error rate across simulations. Type I error patterns mirror false positive rates, with penalized methods at lambda min showing inflation. Type II error increases with correlation, particularly for conservative methods such as BIC and lambda 1se penalized models."}
+knitr::include_graphics(c("Figures/TypeI_Plot.png", "Figures/TypeII_Plot.png"))
+```
+
+\newpage
+
+```{r tab2, echo = FALSE}
 results_table <- readRDS(here::here("P4/Code/Figures", "results_table.rds"))
-results_table
+
+results_table %>%
+  tab_options(
+    table.font.size = px(12),  
+    data_row.padding = px(2), 
+    heading.padding = px(2)
+  )
 ```
-
-![](Figures/AvgVars_Plot.png)
-
-![](Figures/Coverage_Plot.png)
-
-![](Figures/FPR_Plot.png)
-
-![](Figures/TPR_plot.png)
-
-```{r echo = FALSE, fig.cap="Figure 4: (a) Type I Error and (b) Type II Error", fig.show='hold', out.width='48%'}
-knitr::include_graphics("Figures/TypeI_Plot.png")
-knitr::include_graphics("Figures/TypeII_Plot.png")
-```
-
 
