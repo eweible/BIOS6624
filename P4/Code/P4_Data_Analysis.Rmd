@@ -395,7 +395,7 @@ sim_design <- tibble(
 sim_design %>%
   gt() %>%
   tab_header(
-    title = "Simulation Design Summary"
+    title = "Table 1: Simulation Design Summary"
   ) %>%
   cols_label(
     Setting = "Component",
@@ -404,6 +404,9 @@ sim_design %>%
   tab_options(
     table.font.size = px(14),
     heading.align = "left"
+  ) %>%
+  tab_footnote(
+    footnote = "This table outlines the simulation parameters used to evaluate variable selection methods in linear regression. Scenarios varied by sample size and predictor correlation under an exchangeable structure. Each dataset included 20 continuous predictors, five with non‑zero coefficients. Data was analyzed using 2,500 replications per scenario across seven selection strategies."
   )
 
 ```
@@ -438,7 +441,7 @@ nice_table <- summary_metrics %>%
 gt_table <- nice_table %>%
   gt(rowname_col = "metric", groupname_col = "scenario") %>%
   tab_header(
-    title = md("**Performance Metrics by Method and Scenario**")
+    title = md("Supplemental Table: Performance Metrics by Method and Scenario")
   ) %>%
   fmt_number(columns = where(is.numeric), decimals = 3) %>%
   tab_options(
@@ -449,6 +452,9 @@ gt_table <- nice_table %>%
   tab_style(
     style = cell_text(indent = px(20)),
     locations = cells_stub(rows = TRUE)
+  ) %>%
+  tab_footnote(
+    footnote = "This table synthesizes the simulation results used to evaluate variable selection methods in linear regression. Scenarios varied by sample size and predictor correlation under an exchangeable structure. Each dataset included 20 continuous predictors, five with non‑zero coefficients. Data was analyzed using 2,500 replications per scenario across seven selection strategies with six evaluation methods."
   )
 
 gt_table
