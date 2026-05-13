@@ -7,6 +7,18 @@
   url = {https://www.R-project.org/},
 }
 
+@article{Akaike1974,
+  author={Akaike, H.},
+  journal={IEEE Transactions on Automatic Control}, 
+  title={A new look at the statistical model identification}, 
+  year={1974},
+  volume={19},
+  number={6},
+  pages={716-723},
+  keywords={Testing;Maximum likelihood estimation;Time series analysis;Estimation theory;Linear systems;Roundoff errors;History;Stochastic processes;Sampling methods;Art},
+  doi={10.1109/TAC.1974.1100705}
+}
+
 @article{Chong2005,
   title = {Performance of some variable selection methods when multicollinearity is present},
   journal = {Chemometrics and Intelligent Laboratory Systems},
@@ -22,20 +34,33 @@
   abstract = {Variable selection is one of the important practical issues for many scientific engineers. Although the PLS (partial least squares) regression combined with the VIP (variable importance in the projection) scores is often used when the multicollinearity is present among variables, there are few guidelines about its uses as well as its performance. The purpose of this paper is to explore the nature of the VIP method and to compare with other methods through computer simulation experiments. We design 108 experiments where observations are generated from true models considering four factors–the proportion of the number of relevant predictors, the magnitude of correlations between predictors, the structure of regression coefficients, and the magnitude of signal to noise. Confusion matrix is adopted to evaluate the performance of PLS, the Lasso, and stepwise method. We also discuss the proper cutoff value of the VIP method to increase its performance. Some practical hints for the use of the VIP method are given as simulation results.}
 }
 
-@article{Zou2005,
-    author = {Zou, Hui and Hastie, Trevor},
-    title = {Regularization and Variable Selection Via the Elastic Net},
-    journal = {Journal of the Royal Statistical Society Series B: Statistical Methodology},
-    volume = {67},
-    number = {2},
-    pages = {301-320},
-    year = {2005},
-    month = {04},
-    abstract = {We propose the elastic net, a new regularization and variable selection method. Real world data and a simulation study show that the elastic net often outperforms the lasso, while enjoying a similar sparsity of representation. In addition, the elastic net encourages a grouping effect, where strongly correlated predictors tend to be in or out of the model together. The elastic net is particularly useful when the number of predictors (p) is much bigger than the number of observations (n). By contrast, the lasso is not a very satisfactory variable selection method in the p≫n case. An algorithm called LARS-EN is proposed for computing elastic net regularization paths efficiently, much like algorithm LARS does for the lasso.},
-    issn = {1369-7412},
-    doi = {10.1111/j.1467-9868.2005.00503.x},
-    url = {https://doi.org/10.1111/j.1467-9868.2005.00503.x},
-    eprint = {https://academic.oup.com/jrsssb/article-pdf/67/2/301/49795094/jrsssb_67_2_301.pdf},
+@article{Morris2019,
+  author = {Morris, Tim P. and White, Ian R. and Crowther, Michael J.},
+  title = {Using simulation studies to evaluate statistical methods},
+  journal = {Statistics in Medicine},
+  volume = {38},
+  number = {11},
+  pages = {2074-2102},
+  keywords = {graphics for simulation, Monte Carlo, simulation design, simulation reporting, simulation studies},
+  doi = {https://doi.org/10.1002/sim.8086},
+  url = {https://onlinelibrary.wiley.com/doi/abs/10.1002/sim.8086},
+  eprint = {https://onlinelibrary.wiley.com/doi/pdf/10.1002/sim.8086},
+  abstract = {Simulation studies are computer experiments that involve creating data by pseudo-random sampling. A key strength of simulation studies is the ability to understand the behavior of statistical methods because some “truth” (usually some parameter/s of interest) is known from the process of generating the data. This allows us to consider properties of methods, such as bias. While widely used, simulation studies are often poorly designed, analyzed, and reported. This tutorial outlines the rationale for using simulation studies and offers guidance for design, execution, analysis, reporting, and presentation. In particular, this tutorial provides a structured approach for planning and reporting simulation studies, which involves defining aims, data-generating mechanisms, estimands, methods, and performance measures (“ADEMP”); coherent terminology for simulation studies; guidance on coding simulation studies; a critical discussion of key performance measures and their estimation; guidance on structuring tabular and graphical presentation of results; and new graphical presentations. With a view to describing recent practice, we review 100 articles taken from Volume 34 of Statistics in Medicine, which included at least one simulation study and identify areas for improvement.},
+  year = {2019}
+}
+
+@article{Schwarz1978,
+  author = {Gideon Schwarz},
+  title = {{Estimating the Dimension of a Model}},
+  volume = {6},
+  journal = {The Annals of Statistics},
+  number = {2},
+  publisher = {Institute of Mathematical Statistics},
+  pages = {461 -- 464},
+  keywords = {Akaike information criterion, asymptotics, dimension},
+  year = {1978},
+  doi = {10.1214/aos/1176344136},
+  URL = {https://doi.org/10.1214/aos/1176344136}
 }
 
 @article{Tibshirani1996,
@@ -54,19 +79,18 @@
     eprint = {https://academic.oup.com/jrsssb/article-pdf/58/1/267/49098631/jrsssb_58_1_267.pdf},
 }
 
-@article{Morris2019,
-  author = {Morris, Tim P. and White, Ian R. and Crowther, Michael J.},
-  title = {Using simulation studies to evaluate statistical methods},
-  journal = {Statistics in Medicine},
-  volume = {38},
-  number = {11},
-  pages = {2074-2102},
-  keywords = {graphics for simulation, Monte Carlo, simulation design, simulation reporting, simulation studies},
-  doi = {https://doi.org/10.1002/sim.8086},
-  url = {https://onlinelibrary.wiley.com/doi/abs/10.1002/sim.8086},
-  eprint = {https://onlinelibrary.wiley.com/doi/pdf/10.1002/sim.8086},
-  abstract = {Simulation studies are computer experiments that involve creating data by pseudo-random sampling. A key strength of simulation studies is the ability to understand the behavior of statistical methods because some “truth” (usually some parameter/s of interest) is known from the process of generating the data. This allows us to consider properties of methods, such as bias. While widely used, simulation studies are often poorly designed, analyzed, and reported. This tutorial outlines the rationale for using simulation studies and offers guidance for design, execution, analysis, reporting, and presentation. In particular, this tutorial provides a structured approach for planning and reporting simulation studies, which involves defining aims, data-generating mechanisms, estimands, methods, and performance measures (“ADEMP”); coherent terminology for simulation studies; guidance on coding simulation studies; a critical discussion of key performance measures and their estimation; guidance on structuring tabular and graphical presentation of results; and new graphical presentations. With a view to describing recent practice, we review 100 articles taken from Volume 34 of Statistics in Medicine, which included at least one simulation study and identify areas for improvement.},
-  year = {2019}
+@article{Zou2005,
+    author = {Zou, Hui and Hastie, Trevor},
+    title = {Regularization and Variable Selection Via the Elastic Net},
+    journal = {Journal of the Royal Statistical Society Series B: Statistical Methodology},
+    volume = {67},
+    number = {2},
+    pages = {301-320},
+    year = {2005},
+    month = {04},
+    abstract = {We propose the elastic net, a new regularization and variable selection method. Real world data and a simulation study show that the elastic net often outperforms the lasso, while enjoying a similar sparsity of representation. In addition, the elastic net encourages a grouping effect, where strongly correlated predictors tend to be in or out of the model together. The elastic net is particularly useful when the number of predictors (p) is much bigger than the number of observations (n). By contrast, the lasso is not a very satisfactory variable selection method in the p≫n case. An algorithm called LARS-EN is proposed for computing elastic net regularization paths efficiently, much like algorithm LARS does for the lasso.},
+    issn = {1369-7412},
+    doi = {10.1111/j.1467-9868.2005.00503.x},
+    url = {https://doi.org/10.1111/j.1467-9868.2005.00503.x},
+    eprint = {https://academic.oup.com/jrsssb/article-pdf/67/2/301/49795094/jrsssb_67_2_301.pdf},
 }
-
-
