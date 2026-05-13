@@ -2,6 +2,8 @@
 title: "P4_Data_Exploration"
 output: html_document
 date: "2026-05-04"
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -405,19 +407,55 @@ sim_design %>%
 
 ```
 ```{r}
-results_table <- summary_metrics %>%
-  select(n, rho, method, tpr, fpr, bias, coverage, type1, type2) %>%
-  tbl_summary(
-    by = method,
-    statistic = list(
-      all_continuous() ~ "{mean}{p20}"
-    ),
-    digits = all_continuous() ~ 3,
-    missing = "no"
+library(dplyr)
+library(tidyr)
+library(gt)
+
+metrics <- c("tpr", "fpr", "bias", "coverage", "type1", "type2")
+
+nice_table <- summary_metrics %>%
+  mutate(across(all_of(metrics), ~ round(.x, 3))) %>%
+  pivot_longer(
+    cols = all_of(metrics),
+    names_to = "metric",
+    values_to = "value"
   ) %>%
-  modify_header(label ~ "Metric") %>%
-  modify_caption("**Performance Metrics by Variable Selection Method**")
-results_table
+  mutate(
+    metric = recode(metric,
+                    tpr   = "True Positive Rate",
+                    fpr   = "False Positive Rate",
+                    bias  = "Bias",
+                    coverage = "Coverage",
+                    type1 = "Type I Error",
+                    type2 = "Type II Error"),
+    scenario = paste0("n = ", n, ", ρ = ", rho)
+  ) %>%
+  select(scenario, metric, method, value) %>%
+  pivot_wider(
+    id_cols = c(scenario, metric),
+    names_from = method,
+    values_from = value
+  ) %>%
+  arrange(scenario, metric)
+
+gt_table <- nice_table %>%
+  gt(rowname_col = "metric", groupname_col = "scenario") %>%
+  tab_header(
+    title = md("**Performance Metrics by Method and Scenario**")
+  ) %>%
+  fmt_number(columns = where(is.numeric), decimals = 3) %>%
+  tab_options(
+    table.font.size   = px(14),
+    data_row.padding  = px(6),
+    heading.align     = "left"
+  ) %>%
+  tab_style(
+    style = cell_text(indent = px(20)),
+    locations = cells_stub(rows = TRUE)
+  )
+
+gt_table
+
 ```
 
 ```{r}
