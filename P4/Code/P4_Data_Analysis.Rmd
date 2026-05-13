@@ -17,6 +17,7 @@ library(ggplot2)
 library(gt)
 library(tibble)
 library(gtsummary)
+library(tidyr)
 ```
 
 ```{r}
@@ -407,10 +408,6 @@ sim_design %>%
 
 ```
 ```{r}
-library(dplyr)
-library(tidyr)
-library(gt)
-
 metrics <- c("tpr", "fpr", "bias", "coverage", "type1", "type2")
 
 nice_table <- summary_metrics %>%
@@ -455,7 +452,6 @@ gt_table <- nice_table %>%
   )
 
 gt_table
-
 ```
 
 ```{r}
@@ -498,5 +494,6 @@ vars_selected %>%
 ```{r}
 saveRDS(simres, here::here("P4/DataProcessed", "simres.rds"))
 saveRDS(summary_metrics, here::here("P4/DataProcessed", "summary_metrics.rds"))
+saveRDS(gt_table, here::here("P4/Code/Figures", "results_table.rds"))
 ```
 
